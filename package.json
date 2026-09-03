@@ -1,0 +1,58 @@
+{
+  "name": "agentpay",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "packages/agents/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:dev:*\"",
+    "dev:registry": "cd packages/registry && npx tsx src/server.ts",
+    "dev:oracle": "cd packages/agents/stellar-oracle && npx tsx src/server.ts",
+    "dev:webintel": "cd packages/agents/web-intel && npx tsx src/server.ts",
+    "dev:webintel2": "cd packages/agents/web-intel-v2 && npx tsx src/server.ts",
+    "dev:analysis": "cd packages/agents/analysis && npx tsx src/server.ts",
+    "dev:reporter": "cd packages/agents/reporter && npx tsx src/server.ts",
+    "dev:orchestrator": "cd packages/orchestrator && npx tsx src/server.ts",
+    "build:dashboard": "cd packages/dashboard && ../../node_modules/.bin/vite build",
+    "build:orchestrator": "npx esbuild packages/orchestrator/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/orchestrator/dist/server.js",
+    "build:registry": "npx esbuild packages/registry/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/registry/dist/server.js",
+    "build:oracle": "npx esbuild packages/agents/stellar-oracle/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/agents/stellar-oracle/dist/server.js",
+    "build:webintel": "npx esbuild packages/agents/web-intel/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/agents/web-intel/dist/server.js",
+    "build:webintel2": "npx esbuild packages/agents/web-intel-v2/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/agents/web-intel-v2/dist/server.js",
+    "build:analysis": "npx esbuild packages/agents/analysis/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/agents/analysis/dist/server.js",
+    "build:reporter": "npx esbuild packages/agents/reporter/src/server.ts --bundle --platform=node --format=esm --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=packages/agents/reporter/dist/server.js",
+    "bootstrap": "npx tsx scripts/bootstrap.ts",
+    "setup-wallets": "npx tsx scripts/setup-wallets.ts",
+    "fund-testnet-usdc": "npx tsx scripts/fund-testnet-usdc.ts",
+    "add-usdc-trustlines": "npx tsx scripts/add-usdc-trustlines.ts",
+    "distribute-usdc": "npx tsx scripts/distribute-usdc.ts",
+    "build": "npm run build:dashboard && npm run build:registry && npm run build:orchestrator && npm run build:oracle && npm run build:webintel && npm run build:webintel2 && npm run build:analysis && npm run build:reporter",
+    "typecheck": "bash scripts/typecheck.sh",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/supertest": "^7.2.1",
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^8.2.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^9.39.4",
+    "globals": "^15.15.0",
+    "prettier": "^3.8.4",
+    "supertest": "^7.2.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.61.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.9"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^14.6.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  }
+}

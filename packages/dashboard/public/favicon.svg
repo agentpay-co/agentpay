@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#080e1e"/>
+  <rect x="2" y="2" width="28" height="28" rx="6" fill="url(#a)" stroke="rgba(255,255,255,0.08)"/>
+  <g transform="translate(8 8)">
+    <rect width="16" height="16" rx="4" fill="white" fill-opacity="0.06" stroke="rgba(255,255,255,0.08)"/>
+    <!-- BadgeDollar style mark -->
+    <path d="M8 3.5C8 3.5 10.5 2 12.5 4C14.5 6 14 8.5 14 8.5C14 8.5 14.5 11 12.5 13C10.5 15 8 13.5 8 13.5C8 13.5 5.5 15 3.5 13C1.5 11 2 8.5 2 8.5C2 8.5 1.5 6 3.5 4C5.5 2 8 3.5 8 3.5Z" fill="#14b8a6" stroke="#0d9488" stroke-width="0.8"/>
+    <path d="M7.2 6.5V7.2M8.8 9.8V10.5M8 5.8C7.5 5.8 6.8 6 6.8 6.7C6.8 7.4 8 7.6 8.8 7.9C9.6 8.2 9.6 8.8 9.2 9.2C8.8 9.6 8 9.6 8 9.6M8 5.8V5.2M8 10.5V9.6" stroke="white" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <defs>
+    <linearGradient id="a" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14b8a6"/>
+      <stop offset="1" stop-color="#0891b2"/>
+    </linearGradient>
+  </defs>
+</svg>

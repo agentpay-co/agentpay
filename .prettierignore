@@ -1,0 +1,12 @@
+node_modules
+dist
+data
+logs
+.local
+packages/dashboard
+packages/orchestrator/public
+contracts/*/target
+*.md
+*.yml
+*.yaml
+package-lock.json
