@@ -4,7 +4,7 @@
 
 **Privacy-first payments for AI agents on Stellar. Budget-enforced. Privately settled.**
 
-[![CI](https://github.com/agentpay/agentpay/actions/workflows/ci.yml/badge.svg)](https://github.com/agentpay/agentpay/actions/workflows/ci.yml)
+[![CI](https://github.com/agentpay-co/agentpay/actions/workflows/ci.yml/badge.svg)](https://github.com/agentpay-co/agentpay/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Network](https://img.shields.io/badge/Network-Stellar%20Testnet-7B2FFF)](https://stellar.expert/explorer/testnet)
 [![AgentVault](https://img.shields.io/badge/AgentVault-Deployed-00C853)](https://stellar.expert/explorer/testnet/contract/AGENT_VAULT_CONTRACT_ID)
@@ -92,7 +92,7 @@ agentpay/
 ### Install and run the dashboard
 
 ```bash
-git clone https://github.com/agentpay/agentpay.git
+git clone https://github.com/agentpay-co/agentpay.git
 cd agentpay
 npm install
 cd packages/dashboard

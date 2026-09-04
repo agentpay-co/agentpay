@@ -5,11 +5,11 @@ import {
 } from 'lucide-react';
 
 const SOCIALS = [
-  { label: 'GitHub', url: 'https://github.com/agentpay/agentpay', icon: Github },
+  { label: 'GitHub', url: 'https://github.com/agentpay-co/agentpay', icon: Github },
   { label: 'X', url: '', icon: null },
   { label: 'Discord', url: '', icon: null },
 ];
-const GITHUB_URL = 'https://github.com/agentpay/agentpay';
+const GITHUB_URL = 'https://github.com/agentpay-co/agentpay';
 const CIPHERMIT_URL = 'https://github.com/Bosun-Josh121/ciphermit';
 
 function Reveal({ children, delay = 0, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
