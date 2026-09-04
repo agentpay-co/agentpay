@@ -7,6 +7,7 @@
  * check files with owner-only (0600) permissions.
  */
 import fs from 'fs';
+import path from 'path';
 
 export const SECRET_FILE_MODE = 0o600;
 
@@ -57,4 +58,18 @@ export function exposedSecretWarnings(paths: Record<string, string>): string[] {
     }
   }
   return warnings;
+}
+
+/**
+ * Boot-time check for the standard secret-bearing files (`.env` and
+ * `wallets.json` in the working directory) plus any service-specific extras
+ * (e.g. `data/orchestrators.json`). Returns warnings to log loudly.
+ */
+export function secretFileWarnings(extra: Record<string, string> = {}): string[] {
+  const cwd = process.cwd();
+  return exposedSecretWarnings({
+    '.env': path.join(cwd, '.env'),
+    'wallets.json': path.join(cwd, 'wallets.json'),
+    ...extra,
+  });
 }

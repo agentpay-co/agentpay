@@ -10,6 +10,7 @@ import {
   accessLog,
   corsMiddleware,
   verifyPayloadSignature,
+  secretFileWarnings,
 } from '@agentpay/common';
 import type { AgentManifest, AgentFeedback, AgentRecord } from '@agentpay/common';
 
@@ -318,5 +319,6 @@ export { app };
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     logger.info(`Service Registry running on http://localhost:${PORT}`);
+    for (const warning of secretFileWarnings()) logger.warn(warning);
   });
 }

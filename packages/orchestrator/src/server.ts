@@ -39,6 +39,7 @@ import {
   accessLog,
   propagationHeaders,
   corsMiddleware,
+  secretFileWarnings,
 } from '@agentpay/common';
 import { checkFeasibility } from './capability-check.js';
 import { createPlan } from './planner.js';
@@ -1520,6 +1521,12 @@ if (!process.env.VITEST) {
     console.log(`[Orchestrator] Registry: ${REGISTRY_URL}`);
     console.log(`[Orchestrator] WebSocket: ws://localhost:${PORT}/ws`);
     console.log(`[Orchestrator] Plan approval timeout: ${APPROVAL_TIMEOUT_MS / 1000}s`);
+    const dataDir = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', 'data');
+    for (const warning of secretFileWarnings({
+      'orchestrators.json': path.join(dataDir, 'orchestrators.json'),
+    })) {
+      console.warn(`[Orchestrator] SECURITY: ${warning}`);
+    }
 
     // Ensure the shared orchestrator wallet is funded and has a USDC trustline
     setupSharedWallet(keypair).catch(() => {});

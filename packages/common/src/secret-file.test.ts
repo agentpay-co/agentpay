@@ -67,3 +67,16 @@ describe('secret file hygiene', () => {
     expect(warnings[0]).toContain('chmod 600');
   });
 });
+
+describe('secretFileWarnings', () => {
+  it('merges standard paths with service extras', async () => {
+    const { secretFileWarnings } = await import('./secret-file.js');
+    const loose = path.join(dir, 'extra.json');
+    fs.writeFileSync(loose, '{}', { mode: 0o644 });
+    fs.chmodSync(loose, 0o644);
+    // Standard paths point at the real cwd (missing in CI tmp) — only the
+    // extra loose file must be reported.
+    const warnings = secretFileWarnings({ 'extra.json': loose });
+    expect(warnings.some((w) => w.includes('extra.json'))).toBe(true);
+  });
+});
