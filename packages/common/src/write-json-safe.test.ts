@@ -51,3 +51,19 @@ describe('writeJsonSafe', () => {
     expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual({ version: 1 });
   });
 });
+
+describe('writeJsonSafe permissions', () => {
+  it('writes owner-only files when mode is set', () => {
+    writeJsonSafe(target, { secret: true }, { mode: 0o600 });
+    expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual({ secret: true });
+    expect(fs.statSync(target).mode & 0o777).toBe(0o600);
+  });
+
+  it('tightens a pre-existing loose file when mode is set', () => {
+    writeJsonSafe(target, { v: 1 });
+    fs.chmodSync(target, 0o644);
+    writeJsonSafe(target, { v: 2 }, { mode: 0o600 });
+    expect(fs.statSync(target).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(fs.readFileSync(target, 'utf8'))).toEqual({ v: 2 });
+  });
+});
