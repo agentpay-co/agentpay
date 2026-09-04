@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { auditStores, type AuditInput } from './offline-audit.js';
+import { auditExitCode, auditStores, formatFindings, type AuditInput } from './offline-audit.js';
 import type { ActivityEvent } from './activity-store.js';
 import type { TaskResultEntry } from './task-results.js';
 import type { VaultLedgerEntry } from './vault-ledger.js';
@@ -123,5 +123,46 @@ describe('auditStores', () => {
     const input = balanced();
     input.ledger[1].amount_usdc = 0.0200000005;
     expect(auditStores(input)).toEqual([]);
+  });
+});
+
+describe('formatFindings / auditExitCode', () => {
+  it('prints OK and exits 0 when clean', () => {
+    expect(formatFindings([])).toContain('OK:');
+    expect(auditExitCode([])).toBe(0);
+  });
+
+  it('prints named lines and exits 1 on errors', () => {
+    const out = formatFindings(auditStores({ ledger: [], activity: [], results: [] }));
+    expect(out).toBe('OK: ledger, activity log and task results are consistent.');
+    const findings = auditStores({
+      ledger: [ledgerTx({ id: 'v-x', task_id: undefined, agent_name: undefined })],
+      activity: [],
+      results: [],
+    });
+    expect(formatFindings(findings)).toContain('[negative-derived-balance]');
+    expect(auditExitCode(findings)).toBe(1);
+  });
+
+  it('emits parseable JSON with --json', () => {
+    const findings = auditStores({
+      ledger: [],
+      activity: [activityEvent({ id: 'a-s', event: 'task_started', task_id: 'r-1' })],
+      results: [],
+    });
+    const parsed = JSON.parse(formatFindings(findings, { json: true })) as Array<{
+      code: string;
+    }>;
+    expect(parsed.map((f) => f.code)).toEqual(['unfinished-task']);
+  });
+
+  it('warnings pass by default but fail under --strict', () => {
+    const findings = auditStores({
+      ledger: [],
+      activity: [activityEvent({ id: 'a-s', event: 'task_started', task_id: 'r-1' })],
+      results: [],
+    });
+    expect(auditExitCode(findings)).toBe(0);
+    expect(auditExitCode(findings, { strict: true })).toBe(1);
   });
 });

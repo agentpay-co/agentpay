@@ -58,6 +58,40 @@ export function auditStores(input: AuditInput): AuditFinding[] {
   return findings;
 }
 
+export interface ReportOptions {
+  json?: boolean;
+}
+
+/** Human-readable lines by default, JSON array with --json. */
+export function formatFindings(findings: AuditFinding[], options: ReportOptions = {}): string {
+  if (options.json) return JSON.stringify(findings, null, 2);
+  if (findings.length === 0) return 'OK: ledger, activity log and task results are consistent.';
+  return findings
+    .map((f) => {
+      const where = [f.task_id ? `task=${f.task_id}` : '', f.user_address ? `user=${f.user_address}` : '']
+        .filter(Boolean)
+        .join(' ');
+      return `${f.severity.toUpperCase()} [${f.code}] ${f.message}${where ? ` (${where})` : ''}`;
+    })
+    .join('\n');
+}
+
+export interface ExitOptions {
+  /** Treat warnings as failures (for CI gates). */
+  strict?: boolean;
+}
+
+/**
+ * Exit policy: 0 when clean (warnings allowed unless strict),
+ * 1 when errors — or warnings under --strict — are present.
+ */
+export function auditExitCode(findings: AuditFinding[], options: ExitOptions = {}): number {
+  const errors = findings.filter((f) => f.severity === 'error');
+  if (errors.length > 0) return 1;
+  if (options.strict && findings.length > 0) return 1;
+  return 0;
+}
+
 function findDuplicates(input: AuditInput, findings: AuditFinding[]): void {
   const seenLedger = new Set<string>();
   for (const e of input.ledger) {
