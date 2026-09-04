@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Simple test script for CleverCon MCP Server
+ * Simple test script for AgentPay MCP Server
  * Tests that all tools are available and handle basic requests
  */
 
@@ -209,7 +209,7 @@ async function testEstimateCost() {
 }
 
 async function runTests() {
-  console.log('🚀 Running CleverCon MCP Server tests...\n');
+  console.log('🚀 Running AgentPay MCP Server tests...\n');
 
   const tests = [testListTools, testSearchAgents, testEstimateCost];
 
