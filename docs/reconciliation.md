@@ -58,3 +58,28 @@ to avoid false-positive drift from rounding.
 
 - `data/reconciliation-audit.json` -- append-only audit log. Never
   overwritten; only ever appended to.
+
+## Offline audit (no chain access)
+
+`npx tsx scripts/reconcile.ts` (or `npm run reconcile`) cross-checks the
+three local stores against *each other* — no vault deployment needed, so it
+works on a fresh checkout today. It complements the on-chain reconciler
+above: run the offline audit first (cheap, local), then the on-chain pass
+once a vault is deployed.
+
+```bash
+npx tsx scripts/reconcile.ts                  # human-readable report
+npx tsx scripts/reconcile.ts --json           # parseable JSON array
+npx tsx scripts/reconcile.ts --strict         # warnings fail too (CI gates)
+npm run reconcile -- --data-dir /tmp/copy    # audit a copied data dir
+```
+
+Exit codes: `0` clean (warnings allowed unless `--strict`), `1` findings,
+`2` usage error. Missing store files count as empty; corrupt files are
+reported as `unreadable-store` errors.
+
+Finding codes: `duplicate-ledger-id`, `duplicate-activity-id`,
+`duplicate-task-result`, `ledger-payment-without-activity`,
+`activity-payment-without-ledger`, `result-without-completion`,
+`unfinished-task` (warn — may still be running),
+`negative-derived-balance`, `unreadable-store`.
