@@ -48,10 +48,27 @@ async function main() {
     await new Promise((r) => setTimeout(r, 1200));
   }
 
-  // Save wallets.json (gitignored)
+  // Save wallets.json (gitignored) with owner-only permissions — it holds secrets.
   const walletsPath = path.join(__dirname, '..', 'wallets.json');
-  fs.writeFileSync(walletsPath, JSON.stringify(wallets, null, 2));
-  console.log('\n✓ Saved wallets.json (gitignored — keep this safe!)\n');
+  fs.writeFileSync(walletsPath, JSON.stringify(wallets, null, 2), { mode: 0o600 });
+  try {
+    fs.chmodSync(walletsPath, 0o600);
+  } catch {
+    // Best effort — the file is still written; warn loudly below.
+    console.log('! Could not tighten wallets.json permissions — run chmod 600 on it manually.');
+  }
+  console.log('\n✓ Saved wallets.json (gitignored, owner-only permissions — keep this safe!)\n');
+
+  // Tighten .env too — it is about to hold the pasted secret keys.
+  const envPath = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(envPath)) {
+    try {
+      fs.chmodSync(envPath, 0o600);
+      console.log('✓ Tightened .env permissions to owner-only.\n');
+    } catch {
+      console.log('! Could not tighten .env permissions — run chmod 600 on it manually.');
+    }
+  }
 
   // Print .env entries
   console.log('─'.repeat(60));

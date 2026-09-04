@@ -9,11 +9,21 @@
  *
  * @param filePath - Absolute or relative path to the target JSON file.
  * @param data - Serializable value to write.
+ * @param options - Optional `{ mode }` (e.g. `0o600`) to force owner-only
+ *   permissions on the written file, for secret-bearing stores.
  */
 import fs from 'fs';
 import path from 'path';
 
-export function writeJsonSafe(filePath: string, data: unknown): void {
+export interface WriteJsonOptions {
+  mode?: number;
+}
+
+export function writeJsonSafe(
+  filePath: string,
+  data: unknown,
+  options: WriteJsonOptions = {},
+): void {
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -29,8 +39,10 @@ export function writeJsonSafe(filePath: string, data: unknown): void {
     } finally {
       fs.closeSync(fd);
     }
+    if (options.mode !== undefined) fs.chmodSync(tmp, options.mode);
     fs.renameSync(tmp, filePath);
     fsyncDir(dir);
+    if (options.mode !== undefined) fs.chmodSync(filePath, options.mode);
   } catch (err) {
     try {
       if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
