@@ -1,7 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
-import { requestId, accessLog } from '@agentpay/common';
+import { requestId, accessLog, corsMiddleware } from '@agentpay/common';
 import { Keypair } from '@stellar/stellar-sdk';
 import { paymentMiddleware, x402ResourceServer } from '@x402/express';
 import { HTTPFacilitatorClient } from '@x402/core/server';
@@ -38,7 +37,7 @@ const resourceServer = new x402ResourceServer(facilitatorClient).register(
 );
 
 const app = express();
-app.use(cors());
+app.use(corsMiddleware('stellar-oracle'));
 app.use(express.json());
 app.use(requestId);
 app.use(accessLog({ service: 'stellar-oracle', skipPaths: ['/health'] }));
