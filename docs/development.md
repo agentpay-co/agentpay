@@ -516,6 +516,44 @@ human-readable lines locally and single-line JSON when
 
 ## Getting help
 
+### Rotating service keys
+
+`setup-wallets.ts` prints six `*_SECRET_KEY` values (one per service) and
+writes `wallets.json`; both live alongside `.env` with owner-only
+permissions, and the registry/orchestrator warn on boot when any of them is
+group/world-readable. If a key leaks, rotate it — one service at a time, so
+the rest of the stack keeps running:
+
+1. Generate a replacement Stellar testnet keypair (a fresh
+   `setup-wallets.ts` run is fine — keep only the line you need).
+2. Give it a USDC trustline and a small XLM float for fees
+   (`add-usdc-trustlines.ts` covers trustlines; Friendbot covers XLM).
+3. If the agent spends externally (oracle/xlm402 calls), move it a small
+   USDC float with `distribute-usdc.ts` logic.
+4. Update the **one** service's env — local `.env` and the matching Render
+   dashboard entry — and restart only that service.
+5. Verify: its `/health` is green, the registry lists it under the new
+   `stellar_address`, and `POST /api/tasks/preview` still returns feasible.
+6. Drain the old wallet and abandon it; never reuse a rotated-out secret.
+
+Two keys are special:
+
+- **`ORCHESTRATOR_SECRET_KEY`** is the AgentVault admin and holds the bulk
+  USDC. After steps 1–4, transfer admin on-chain before decommissioning the
+  old wallet:
+  `stellar contract invoke --id $AGENT_VAULT_CONTRACT_ID --network testnet
+  --source $OLD_ORCH_SEC -- update_admin --new_admin $NEW_ORCH_PUB`
+  (confirm the exact entry name against the deployed vault version first).
+  Rotating the orchestrator does **not** change `AGENT_VAULT_CONTRACT_ID`.
+- **Per-user orchestrator secrets** in `data/orchestrators.json` belong to
+  individual demo users. Rotate only with no active tasks for that user (or
+  after they withdraw): delete the record, have them re-register, and they
+  get a fresh keypair.
+
+Until secrets move to a KMS/vault (roadmap P2-3), treat every `*_SECRET_KEY`
+as a password: 0600 files, never in git, never in chat logs, never in
+`logs/` (services never log secrets — keep it that way).
+
 Open an issue (use the bug report or contributor issue template), or email
 the maintainer at joshuaibitoye111@gmail.com for anything sensitive, see
 [SECURITY.md](../SECURITY.md) for vulnerability reports specifically.
