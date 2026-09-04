@@ -86,9 +86,15 @@ async function main(): Promise<void> {
   }
   const ioFindings: AuditFinding[] = [];
   const input = {
-    ledger: readStore<VaultLedgerEntry>(path.join(options.dataDir, 'vault-ledger.json'), ioFindings),
+    ledger: readStore<VaultLedgerEntry>(
+      path.join(options.dataDir, 'vault-ledger.json'),
+      ioFindings,
+    ),
     activity: readStore<ActivityEvent>(path.join(options.dataDir, 'activity-log.json'), ioFindings),
-    results: readStore<TaskResultEntry>(path.join(options.dataDir, 'task-results.json'), ioFindings),
+    results: readStore<TaskResultEntry>(
+      path.join(options.dataDir, 'task-results.json'),
+      ioFindings,
+    ),
   };
   const findings = [...ioFindings, ...auditStores(input)];
   console.log(formatFindings(findings, { json: options.json }));

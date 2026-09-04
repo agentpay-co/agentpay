@@ -40,6 +40,7 @@ function taskResult(overrides: Partial<TaskResultEntry> = {}): TaskResultEntry {
     total_time_ms: 100,
     final_output: 'done',
     steps: [],
+    timestamp: new Date().toISOString(),
     ...overrides,
   };
 }
@@ -47,13 +48,31 @@ function taskResult(overrides: Partial<TaskResultEntry> = {}): TaskResultEntry {
 function balanced(): AuditInput {
   return {
     ledger: [
-      { ...ledgerTx({ id: 'v-dep', type: 'deposit', amount_usdc: 5, task_id: undefined, agent_name: undefined }) },
+      {
+        ...ledgerTx({
+          id: 'v-dep',
+          type: 'deposit',
+          amount_usdc: 5,
+          task_id: undefined,
+          agent_name: undefined,
+        }),
+      },
       ledgerTx({ id: 'v-pay' }),
     ],
     activity: [
-      activityEvent({ id: 'a-start', event: 'task_started', amount_usdc: undefined, agent_name: undefined }),
+      activityEvent({
+        id: 'a-start',
+        event: 'task_started',
+        amount_usdc: undefined,
+        agent_name: undefined,
+      }),
       activityEvent({ id: 'a-pay' }),
-      activityEvent({ id: 'a-done', event: 'task_completed', amount_usdc: 0.02, agent_name: undefined }),
+      activityEvent({
+        id: 'a-done',
+        event: 'task_completed',
+        amount_usdc: 0.02,
+        agent_name: undefined,
+      }),
     ],
     results: [taskResult()],
   };
