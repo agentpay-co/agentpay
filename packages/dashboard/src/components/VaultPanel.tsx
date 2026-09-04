@@ -4,6 +4,7 @@ import { useWallet } from '../contexts/WalletProvider';
 import { fetchVaultAccount, buildDepositXdr, buildWithdrawXdr, submitVaultXdr, type VaultAccount } from '../lib/vault-client';
 
 import { VAULT_CONTRACT_ID } from '../lib/config';
+import { vaultBanner } from '../lib/status-messages';
 const NETWORK_PASSPHRASE = 'Test SDF Network ; September 2015';
 const QUICK_AMOUNTS = [1, 5, 10, 20];
 
@@ -147,6 +148,8 @@ export function VaultPanel({
 
   if (!publicKey) return null;
 
+  const banner = vaultBanner(VAULT_CONTRACT_ID);
+
   return (
     <>
       <div className="bg-gray-900 border border-gray-700 rounded-xl p-4">
@@ -171,6 +174,15 @@ export function VaultPanel({
           </div>
         ) : (
           <>
+            {/* Unconfigured vault explains zero balances instead of implying poverty */}
+            {banner && (
+              <div className="bg-amber-950/30 border border-amber-900/50 rounded-xl px-3 py-2.5 mb-3">
+                <p className="text-xs leading-relaxed text-gray-300">
+                  <span className="font-semibold text-amber-300">{banner.title}</span>{' '}
+                  <span className="text-gray-400">{banner.body}</span>
+                </p>
+              </div>
+            )}
             {/* Balance display */}
             <div className="bg-gray-800 rounded-xl p-4 mb-3">
               <p className="text-xs text-gray-500 mb-1">Total Balance</p>
