@@ -109,6 +109,33 @@ npx tsx scripts/bootstrap.ts --auto-approve
 Runs ~25 varied tasks through the orchestrator so agents accumulate
 reputation history, useful when working on the selector or dashboard.
 
+### Rehearsing the demo
+
+```bash
+LLM_PROVIDER=mock ./scripts/start.sh   # no API key needed
+npm run demo-check                     # fixed script, asserts every stage
+```
+
+`demo-check` runs the exact 3-prompt demo (oracle price → news headlines →
+news + sentiment analysis, budgets $0.50/$0.50/$1.00) through five gates:
+services up → agents registered → previews feasible and within budget →
+submit/approve/complete per task → stores reconcile. Exit `0` is a pass,
+`1` names the failed stage, `2` means services are down.
+
+Narration to rehearse while it runs:
+
+1. "The dashboard shows the plan and its cost before anything is spent."
+2. On the approval beat: "I approve — live, the audience gets 60 seconds
+   here before auto-approval."
+3. On each `task_complete`: "Payment released per step, remainder refunded —
+   the vault never lets spending exceed the budget."
+
+If a stage fails, say the fallback line: "That's the mock path showing its
+honest error — on the live run this is where the funded vault takes over."
+The live run is the same command against funded services plus a Freighter
+wallet: deposit first, then watch `task_complete` and record the explorer
+TX hashes in `docs/demo-notes.md` (copy the template there).
+
 ## Common tasks
 
 ```bash
@@ -118,6 +145,8 @@ npm run lint        # ESLint over all TypeScript sources
 npm run format      # Prettier --write
 npm run format:check  # Prettier --check (used in CI)
 npm test            # Vitest unit tests
+npm run reconcile   # offline audit of vault-ledger/activity/task-results
+npm run demo-check  # rehearsed 3-task demo with stage assertions
 ```
 
 Build a single service with `npm run build:<name>` (e.g. `build:orchestrator`,
