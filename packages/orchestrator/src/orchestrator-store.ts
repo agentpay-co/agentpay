@@ -37,7 +37,7 @@ function load(): Store {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     if (!fs.existsSync(STORE_PATH)) {
-      fs.writeFileSync(STORE_PATH, '{}', 'utf8');
+      writeJsonSafe(STORE_PATH, {});
     }
     cache = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8')) as Store;
   } catch {

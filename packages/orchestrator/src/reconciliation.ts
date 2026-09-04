@@ -82,7 +82,7 @@ function loadAudit(): AuditLog {
   if (auditCache) return auditCache;
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(AUDIT_PATH)) {
-    fs.writeFileSync(AUDIT_PATH, '[]', 'utf8');
+    writeJsonSafe(AUDIT_PATH, []);
     auditCache = [];
     return auditCache;
   }

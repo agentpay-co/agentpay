@@ -44,7 +44,7 @@ function load(): Log {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     if (!fs.existsSync(LOG_PATH)) {
-      fs.writeFileSync(LOG_PATH, '[]', 'utf8');
+      writeJsonSafe(LOG_PATH, []);
     }
     cache = JSON.parse(fs.readFileSync(LOG_PATH, 'utf8')) as Log;
   } catch {

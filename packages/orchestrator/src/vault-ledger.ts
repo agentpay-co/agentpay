@@ -36,7 +36,7 @@ function load(): Ledger {
   if (cache) return cache;
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    if (!fs.existsSync(LEDGER_PATH)) fs.writeFileSync(LEDGER_PATH, '[]', 'utf8');
+    if (!fs.existsSync(LEDGER_PATH)) writeJsonSafe(LEDGER_PATH, []);
     cache = JSON.parse(fs.readFileSync(LEDGER_PATH, 'utf8')) as Ledger;
   } catch {
     cache = [];
