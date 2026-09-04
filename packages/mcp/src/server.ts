@@ -43,7 +43,7 @@ interface ServerConfig {
 
 function getConfig(): ServerConfig {
   return {
-    registry_url: process.env.REGISTRY_URL || 'http://localhost:3001',
+    registry_url: process.env.REGISTRY_URL || 'http://localhost:4000',
     soroban_rpc_url: process.env.STELLAR_RPC_URL || 'https://soroban-testnet.stellar.org',
     network_passphrase:
       process.env.STELLAR_NETWORK_PASSPHRASE || 'Test SDF Network ; September 2015',

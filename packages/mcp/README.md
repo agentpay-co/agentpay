@@ -23,8 +23,8 @@ npm run build
 Set these environment variables:
 
 ```bash
-# Registry API endpoint
-REGISTRY_URL=http://localhost:3001
+# Registry API endpoint (local registry defaults to :4000)
+REGISTRY_URL=http://localhost:4000
 
 # Stellar network configuration
 STELLAR_RPC_URL=https://soroban-testnet.stellar.org
@@ -63,7 +63,7 @@ Add this to your Claude Desktop `config.json`:
     "agentpay": {
       "command": "/path/to/agentpay/packages/mcp/dist/server.js",
       "env": {
-        "REGISTRY_URL": "https://registry.agentpay.net",
+        "REGISTRY_URL": "https://agentpay-registry.onrender.com",
         "STELLAR_RPC_URL": "https://soroban-testnet.stellar.org",
         "AGENT_VAULT_CONTRACT_ID": "C...REPLACE_WITH_YOUR_DEPLOYED_ID",
         "USDC_SAC": "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA"
