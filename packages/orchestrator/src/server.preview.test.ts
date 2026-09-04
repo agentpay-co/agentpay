@@ -112,6 +112,45 @@ describe('POST /api/tasks/preview', () => {
     expect(body.error).toBe('registry_unavailable');
   });
 
+  it('forwards the caller request id to the registry', async () => {
+    const seenHeaders: Array<Record<string, string>> = [];
+    const realFetch = fetch;
+    vi.spyOn(global, 'fetch').mockImplementation((input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes(`:${REGISTRY_PORT}`)) {
+        seenHeaders.push({ ...((init?.headers as Record<string, string> | undefined) ?? {}) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve([mockAgent]) } as Response);
+      }
+      return realFetch(input, init);
+    });
+
+    vi.mocked(checkFeasibility).mockResolvedValueOnce({
+      feasible: true,
+      needed: ['data-analysis'],
+      available: ['data-analysis'],
+      missing: [],
+    });
+
+    vi.mocked(createPlan).mockResolvedValueOnce({
+      steps: [],
+      total_estimated_cost: 0,
+      reasoning: 'No steps needed for this test.',
+    });
+
+    const res = await fetch(`${baseUrl}/api/tasks/preview`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Request-Id': 'prop-1' },
+      body: JSON.stringify({ prompt: 'analyze this dataset' }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-request-id')).toBe('prop-1');
+    expect(seenHeaders.length).toBeGreaterThan(0);
+    for (const headers of seenHeaders) {
+      expect(headers['X-Request-Id']).toBe('prop-1');
+    }
+  });
+
   it('returns 200 with full step shape on happy path using prompt field', async () => {
     mockRegistryFetch([mockAgent]);
 

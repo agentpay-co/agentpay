@@ -34,7 +34,7 @@ import {
   Operation,
 } from '@stellar/stellar-sdk';
 import type { AgentRecord } from '@agentpay/common';
-import { accountExplorerUrl } from '@agentpay/common';
+import { accountExplorerUrl, requestId, accessLog, propagationHeaders } from '@agentpay/common';
 import { checkFeasibility } from './capability-check.js';
 import { createPlan } from './planner.js';
 import { validatePlan } from './validator.js';
@@ -240,8 +240,23 @@ async function buildUsdcTrustlineXdr(userAddress: string): Promise<string> {
 
 // ── Registry helpers ──────────────────────────────────────────────────────────
 
-async function fetchAgents(): Promise<AgentRecord[]> {
-  const response = await fetch(`${REGISTRY_URL}/agents`, { signal: AbortSignal.timeout(8000) });
+type InboundRequest = { requestId?: string } | express.Request;
+
+/** fetch() against the registry that propagates the caller's request id. */
+async function registryFetch(
+  req: InboundRequest | undefined,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string> | undefined),
+    ...propagationHeaders(req as { requestId?: string } | undefined),
+  };
+  return fetch(`${REGISTRY_URL}${path}`, { ...init, headers });
+}
+
+async function fetchAgents(req?: InboundRequest): Promise<AgentRecord[]> {
+  const response = await registryFetch(req, '/agents', { signal: AbortSignal.timeout(8000) });
   if (!response.ok) throw new Error(`Registry returned ${response.status}`);
   const data = await response.json();
   return Array.isArray(data) ? data : (data.agents ?? []);
@@ -302,6 +317,8 @@ function waitForApproval(task_id: string, planPayload: unknown): Promise<void> {
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(requestId);
+app.use(accessLog({ service: 'orchestrator', skipPaths: ['/health'] }));
 
 // Serve dashboard static files if built
 const dashboardPath = path.join(__dirname, '..', 'public');
@@ -376,7 +393,7 @@ app.get('/reconciliation/audit', (req, res) => {
 // List agents from registry
 app.get('/api/agents', async (_req, res) => {
   try {
-    const agents = await fetchAgents();
+    const agents = await fetchAgents(_req);
     res.json({ agents, count: agents.length });
   } catch (err: any) {
     res.status(502).json({ error: `Failed to reach registry: ${err.message}` });
@@ -402,7 +419,7 @@ app.delete('/api/agents/:id', async (req, res) => {
     return res.status(400).json({ error: 'requester_address is required' });
   }
   try {
-    const resp = await fetch(`${REGISTRY_URL}/agents/${encodeURIComponent(req.params.id)}`, {
+    const resp = await registryFetch(req, `/agents/${encodeURIComponent(req.params.id)}`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requester_address }),
@@ -421,7 +438,7 @@ app.delete('/api/agents/:id', async (req, res) => {
 // Accepts both /api/register and /api/agents/register (dashboard uses both)
 async function proxyRegister(req: express.Request, res: express.Response) {
   try {
-    const resp = await fetch(`${REGISTRY_URL}/register`, {
+    const resp = await registryFetch(req, '/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body),
@@ -439,7 +456,7 @@ app.post('/api/agents/register', proxyRegister);
 // Update agent name/description — proxied to registry with ownership check
 app.patch('/api/agents/:id', async (req, res) => {
   try {
-    const resp = await fetch(`${REGISTRY_URL}/agents/${encodeURIComponent(req.params.id)}`, {
+    const resp = await registryFetch(req, `/agents/${encodeURIComponent(req.params.id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req.body),
@@ -877,7 +894,7 @@ app.post('/api/tasks/preview', async (req, res) => {
 
   let agents: AgentRecord[];
   try {
-    agents = await fetchAgents();
+    agents = await fetchAgents(req);
   } catch (err: any) {
     return res.status(503).json({ error: 'registry_unavailable', message: err.message });
   }
@@ -1144,6 +1161,8 @@ async function runTask(
     // 1. Fetch available agents
     let agents: AgentRecord[];
     try {
+      // Background execution has no inbound request; task_id (broadcasts,
+      // activity log) is the correlation id from here on.
       agents = await fetchAgents();
       broadcast('agents_loaded', { task_id, count: agents.length });
     } catch (err: any) {

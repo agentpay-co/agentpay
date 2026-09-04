@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { requestId, accessLog } from '@agentpay/common';
 import { Keypair } from '@stellar/stellar-sdk';
 import { Mppx } from 'mppx/server';
 import { stellar } from '@stellar/mpp/charge/server';
@@ -46,6 +47,8 @@ function getMppx() {
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(requestId);
+app.use(accessLog({ service: 'analysis', skipPaths: ['/health'] }));
 
 // ── Unpaid endpoints ──────────────────────────────────────────────
 app.get('/health', (_req, res) => {

@@ -5,7 +5,7 @@ import { loadAgents, findAgent, upsertAgent, removeAgent } from './store.js';
 import { updateReputation } from './reputation.js';
 import { matchCapabilities } from './search.js';
 import { validateRegistration } from './validate.js';
-import { logger } from '@agentpay/common';
+import { logger, requestId, accessLog } from '@agentpay/common';
 import type { AgentManifest, AgentFeedback, AgentRecord } from '@agentpay/common';
 
 const app = express();
@@ -13,6 +13,8 @@ const PORT = parseInt(process.env.REGISTRY_PORT || process.env.PORT || '4000', 1
 
 app.use(cors());
 app.use(express.json());
+app.use(requestId);
+app.use(accessLog({ service: 'registry', skipPaths: ['/health'] }));
 
 // POST /register — register or update an agent
 app.post('/register', (req, res) => {
