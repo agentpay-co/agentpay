@@ -11,7 +11,7 @@ import type { TaskResult } from '@agentpay/common';
 import { writeJsonSafe } from '@agentpay/common';
 
 const __dirname = path.dirname(path.resolve(process.argv[1]));
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const RESULTS_PATH = path.join(DATA_DIR, 'task-results.json');
 
 export interface TaskResultEntry {
@@ -34,7 +34,7 @@ function load(): Store {
   if (cache) return cache;
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
-    if (!fs.existsSync(RESULTS_PATH)) fs.writeFileSync(RESULTS_PATH, '[]', 'utf8');
+    if (!fs.existsSync(RESULTS_PATH)) writeJsonSafe(RESULTS_PATH, []);
     cache = JSON.parse(fs.readFileSync(RESULTS_PATH, 'utf8')) as Store;
   } catch {
     cache = [];

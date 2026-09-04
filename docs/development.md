@@ -406,6 +406,22 @@ seconds to accommodate this.
   --noEmit` per package rather than relying on a single project-reference
   build.
 
+### JSON store durability
+
+All runtime JSON (`data/registry.json`, `vault-ledger.json`,
+`activity-log.json`, `task-results.json`, `orchestrators.json`,
+`reconciliation-audit.json`) is written through `@agentpay/common`'s
+`writeJsonSafe`: serialise → write `.tmp` → fsync → atomic rename → directory
+fsync. A process crash can never leave a truncated store, and an OS crash
+cannot lose a completed write. The registry additionally serialises writes
+through an in-process queue; call `flushWrites()` (exported from
+`packages/registry/src/store.ts`) in shutdown hooks before exiting. A store
+file that fails to parse loads as empty and is rewritten on the next write,
+so a corrupt file degrades to lost history, never a crash loop. Set
+`AGENTPAY_DATA_DIR` to relocate the data directory (tests, hosted ephemeral
+disks). This is still single-instance persistence — concurrent processes
+remain unsupported.
+
 ## Building a specialist agent or service
 
 The agent interface is service-agnostic. Your specialist can be anything that

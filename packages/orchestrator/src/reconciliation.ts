@@ -42,7 +42,7 @@ import {
 import * as orchestratorStore from './orchestrator-store.js';
 
 const __dirname = path.dirname(path.resolve(process.argv[1]));
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const AUDIT_PATH = path.join(DATA_DIR, 'reconciliation-audit.json');
 
 const STROOPS_PER_USDC = 10_000_000;
@@ -82,7 +82,7 @@ function loadAudit(): AuditLog {
   if (auditCache) return auditCache;
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(AUDIT_PATH)) {
-    fs.writeFileSync(AUDIT_PATH, '[]', 'utf8');
+    writeJsonSafe(AUDIT_PATH, []);
     auditCache = [];
     return auditCache;
   }
