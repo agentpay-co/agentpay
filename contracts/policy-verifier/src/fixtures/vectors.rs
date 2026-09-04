@@ -12,7 +12,7 @@
 //! 1. Choose `commitment`, `payee_xdr_bytes`, `amount`, `nullifier`.
 //! 2. Compute `PI_hash = SHA-256(PI₀ ‖ PI₁ ‖ PI₂ ‖ PI₃)` per encoding.rs.
 //! 3. Set `pi_commitment = PI_hash` (bytes [0..32] of proof).
-//! 4. Set `circuit_id` = SHA-256("clevercon-spend-policy-v1") (bytes [32..64]).
+//! 4. Set `circuit_id` = SHA-256("agentpay-spend-policy-v1") (bytes [32..64]).
 //! 5. Compute `selector_evals_hash` = SHA-256("sel-evals-placeholder") [128..160].
 //! 6. Compute `challenge_zeta` = SHA-256(circuit_id ‖ PI_hash ‖ selector_evals_hash).
 //! 7. Compute `grand_product_eval` = SHA-256("gp-eval-placeholder") [96..128].
@@ -20,7 +20,7 @@
 //! 9. Choose `shifted_opening_eval` = SHA-256("shifted-eval-placeholder") [192..224].
 //! 10. Find `opening_eval` such that `check_opening_consistency` returns true.
 //!     The sentinel is: `SHA-256(ζ ‖ opening_eval ‖ shifted ‖ domain_tag)[0] == 0x00`.
-//!     We brute-force the last byte of `opening_eval` until the sentinel is met.
+//!     We brute-force the last two bytes of `opening_eval` until the sentinel is met.
 //!     (This is only needed for test vector construction; valid proofs from the
 //!     real Noir prover satisfy the full equation.)
 //! 11. Pad to MIN_PROOF_LEN with zeroes.
@@ -63,11 +63,11 @@ pub const NULLIFIER: [u8; 32] = [
     0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00,
 ];
 
-/// Circuit-domain separator: SHA-256("clevercon-spend-policy-v1").
+/// Circuit-domain separator: SHA-256("agentpay-spend-policy-v1").
 ///
 /// Used as `circuit_id` in the proof header and in the Fiat-Shamir transcript.
 /// Both the on-chain verifier and the Noir prover (#67) must use this string.
-pub const CIRCUIT_DOMAIN_SEP: &[u8] = b"clevercon-spend-policy-v1";
+pub const CIRCUIT_DOMAIN_SEP: &[u8] = b"agentpay-spend-policy-v1";
 
 /// Build a minimal valid proof for the given public-input hash.
 ///
@@ -86,7 +86,7 @@ pub fn build_valid_proof(
 ) -> soroban_sdk::Bytes {
     use soroban_sdk::{Bytes, BytesN};
 
-    // circuit_id = SHA-256("clevercon-spend-policy-v1")
+    // circuit_id = SHA-256("agentpay-spend-policy-v1")
     let circuit_domain = Bytes::from_slice(env, CIRCUIT_DOMAIN_SEP);
     let circuit_id: BytesN<32> = env.crypto().sha256(&circuit_domain).into();
 
@@ -121,21 +121,29 @@ pub fn build_valid_proof(
     // Find opening_eval such that check_opening_consistency returns true.
     // Sentinel: SHA-256(ζ ‖ opening_eval ‖ shifted ‖ domain_tag)[0] == 0x00
     // domain_tag = log_circuit_size(16384)=14 as u32 be ‖ pub_inputs_offset=1 as u32 be
+    //
+    // The search spans the last two bytes (up to 65_536 candidates, fixed order
+    // from zero so fixtures stay deterministic). A single byte only succeeds
+    // with probability ~63% for an arbitrary domain separator; two bytes make
+    // failure cryptographically unlikely for any separator string.
     let log_circuit_size: u32 = 14; // log2(16384)
     let pub_inputs_offset: u32 = 1;
 
     let mut opening_eval = [0u8; 32];
-    for candidate in 0u8..=255 {
-        opening_eval[31] = candidate;
-        let mut check_data = Bytes::new(env);
-        check_data.extend_from_array(&challenge_zeta.to_array());
-        check_data.extend_from_array(&opening_eval);
-        check_data.extend_from_array(&shifted_opening_eval);
-        check_data.extend_from_array(&log_circuit_size.to_be_bytes());
-        check_data.extend_from_array(&pub_inputs_offset.to_be_bytes());
-        let check: BytesN<32> = env.crypto().sha256(&check_data).into();
-        if check.to_array()[0] == 0x00 {
-            break;
+    'search: for hi in 0u8..=255 {
+        for lo in 0u8..=255 {
+            opening_eval[30] = hi;
+            opening_eval[31] = lo;
+            let mut check_data = Bytes::new(env);
+            check_data.extend_from_array(&challenge_zeta.to_array());
+            check_data.extend_from_array(&opening_eval);
+            check_data.extend_from_array(&shifted_opening_eval);
+            check_data.extend_from_array(&log_circuit_size.to_be_bytes());
+            check_data.extend_from_array(&pub_inputs_offset.to_be_bytes());
+            let check: BytesN<32> = env.crypto().sha256(&check_data).into();
+            if check.to_array()[0] == 0x00 {
+                break 'search;
+            }
         }
     }
 
