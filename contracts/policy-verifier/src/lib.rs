@@ -13,6 +13,7 @@
 //! | [`init`] | One-time initialisation; sets the admin. |
 //! | [`set_vk`] | Admin-only; stores or rotates the verifying key. |
 //! | [`verify`] | Pure verification call; returns `true` iff the proof is valid. |
+//! | [`verify_policy`] | Same engine under the name AgentVault calls. |
 //! | [`get_vk_hash`] | View; returns SHA-256 of the active VK for auditability. |
 //!
 //! ## Guarantees
@@ -162,6 +163,39 @@ impl PolicyVerifier {
         nullifier: BytesN<32>,
         proof: Bytes,
     ) -> Result<bool, VerifierError> {
+        Self::verify_inner(&env, &commitment, &payee, amount, &nullifier, &proof)
+    }
+
+    /// Verify a zero-knowledge proof, under the name AgentVault calls.
+    ///
+    /// This is the entrypoint `AgentVault::release_payment_proved` invokes
+    /// through its `PolicyVerifier` trait (`contracts/agent-vault/src/lib.rs`).
+    /// It executes byte-identical logic to [`PolicyVerifier::verify`] — both
+    /// delegate to the shared engine — so `verify` remains as the stable
+    /// standalone name while `verify_policy` is the canonical name for vault
+    /// wiring. Arguments, return contract, and errors match `verify` exactly.
+    pub fn verify_policy(
+        env: Env,
+        commitment: BytesN<32>,
+        payee: Address,
+        amount: i128,
+        nullifier: BytesN<32>,
+        proof: Bytes,
+    ) -> Result<bool, VerifierError> {
+        Self::verify_inner(&env, &commitment, &payee, amount, &nullifier, &proof)
+    }
+
+    /// Shared verification engine behind [`PolicyVerifier::verify`] and
+    /// [`PolicyVerifier::verify_policy`]. Not an entrypoint itself, so both
+    /// public names execute byte-identical logic by construction.
+    fn verify_inner(
+        env: &Env,
+        commitment: &BytesN<32>,
+        payee: &Address,
+        amount: i128,
+        nullifier: &BytesN<32>,
+        proof: &Bytes,
+    ) -> Result<bool, VerifierError> {
         // Amount guard — amounts ≤ 0 are never valid payments.
         if amount <= 0 {
             return Err(VerifierError::InvalidAmount);
@@ -176,10 +210,10 @@ impl PolicyVerifier {
         // Reconstruct the canonical public-input vector and its hash from the
         // call arguments. This is the same computation the prover (#67) runs
         // to produce the PI commitment embedded in the proof.
-        let (_, pi_hash) = build_public_inputs(&env, &commitment, &payee, amount, &nullifier);
+        let (_, pi_hash) = build_public_inputs(env, commitment, payee, amount, nullifier);
 
         // Delegate to the pure verification engine.
-        verify_proof(&env, &vk_bytes, &pi_hash, &proof)
+        verify_proof(env, &vk_bytes, &pi_hash, proof)
     }
 
     /// Return the SHA-256 hash of the currently active verifying key.

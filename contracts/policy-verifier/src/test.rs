@@ -566,3 +566,86 @@ fn test_verify_deterministic_across_ledger_sequences() {
         "verify must be deterministic regardless of ledger state"
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// verify_policy — vault-facing alias
+// ─────────────────────────────────────────────────────────────────────────────
+
+#[test]
+fn test_verify_policy_valid_proof_returns_true() {
+    let (env, _, admin, client) = setup();
+    let vk = Bytes::from_slice(&env, VALID_VK);
+    client.set_vk(&admin, &vk);
+
+    let payee = Address::generate(&env);
+    let commitment = BytesN::from_array(&env, &COMMITMENT);
+    let nullifier = BytesN::from_array(&env, &NULLIFIER);
+    let (_, pi_hash) = build_public_inputs(&env, &commitment, &payee, AMOUNT, &nullifier);
+    let proof = build_valid_proof(&env, &pi_hash);
+
+    assert!(
+        client.verify_policy(&commitment, &payee, &AMOUNT, &nullifier, &proof),
+        "valid proof via verify_policy must return true"
+    );
+}
+
+#[test]
+fn test_verify_policy_without_vk_returns_false() {
+    let (env, _, _admin, client) = setup();
+    // Do NOT call set_vk — alias must fail closed exactly like verify
+    let payee = Address::generate(&env);
+    let commitment = BytesN::from_array(&env, &COMMITMENT);
+    let nullifier = BytesN::from_array(&env, &NULLIFIER);
+    let (_, pi_hash) = build_public_inputs(&env, &commitment, &payee, AMOUNT, &nullifier);
+    let proof = build_valid_proof(&env, &pi_hash);
+
+    assert!(
+        !client.verify_policy(&commitment, &payee, &AMOUNT, &nullifier, &proof),
+        "verify_policy without VK must return false (fail-closed)"
+    );
+}
+
+#[test]
+fn test_verify_policy_invalid_amount_errors() {
+    let (env, _, admin, client) = setup();
+    let vk = Bytes::from_slice(&env, VALID_VK);
+    client.set_vk(&admin, &vk);
+
+    let payee = Address::generate(&env);
+    let commitment = BytesN::from_array(&env, &COMMITMENT);
+    let nullifier = BytesN::from_array(&env, &NULLIFIER);
+    let (_, pi_hash) = build_public_inputs(&env, &commitment, &payee, AMOUNT, &nullifier);
+    let proof = build_valid_proof(&env, &pi_hash);
+
+    let result = client.try_verify_policy(&commitment, &payee, &0, &nullifier, &proof);
+    assert!(
+        matches!(result, Err(Ok(VerifierError::InvalidAmount))),
+        "zero amount via verify_policy must return InvalidAmount, got: {result:?}"
+    );
+}
+
+#[test]
+fn test_verify_and_verify_policy_agree_on_tampered_inputs() {
+    let (env, _, admin, client) = setup();
+    let vk = Bytes::from_slice(&env, VALID_VK);
+    client.set_vk(&admin, &vk);
+
+    let payee = Address::generate(&env);
+    let commitment = BytesN::from_array(&env, &COMMITMENT);
+    let nullifier = BytesN::from_array(&env, &NULLIFIER);
+    let (_, pi_hash) = build_public_inputs(&env, &commitment, &payee, AMOUNT, &nullifier);
+    let proof = build_valid_proof(&env, &pi_hash);
+
+    // Tamper the commitment: both entrypoints must reject identically.
+    let mut bad_bytes = COMMITMENT;
+    bad_bytes[0] ^= 0xFF;
+    let bad_commitment = BytesN::from_array(&env, &bad_bytes);
+
+    let via_verify = client.verify(&bad_commitment, &payee, &AMOUNT, &nullifier, &proof);
+    let via_policy = client.verify_policy(&bad_commitment, &payee, &AMOUNT, &nullifier, &proof);
+    assert!(
+        !via_verify && !via_policy,
+        "both names must reject tampered input"
+    );
+    assert_eq!(via_verify, via_policy, "entrypoints must agree");
+}

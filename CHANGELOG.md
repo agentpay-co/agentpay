@@ -42,6 +42,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **policy-verifier: new `verify_policy` entrypoint.** `AgentVault`'s
+  `PolicyVerifier` trait calls `verify_policy`, but the verifier contract only
+  exposed `verify` — the proof-gated path would have trapped once wired. The
+  contract now exposes `verify_policy` as a second entrypoint sharing one
+  engine with `verify` (which stays as the stable standalone name). No vault
+  changes needed; on-chain wiring and the `set_vk` ceremony are still to come.
 - **Breaking:** `AgentVault::release_payment` now requires a caller-supplied
   `step_id` between `task_id` and `asset`. Replays with the same
   `(task_id, step_id, amount)` are idempotent successes, while reusing a
