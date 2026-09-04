@@ -4,6 +4,7 @@ import {
   ExternalLink, Zap, Clock, ChevronDown, ChevronUp, BookOpen, PlusCircle,
 } from 'lucide-react';
 import { fetchAgents, renameAgent, deleteAgent } from '../lib/api';
+import { agentsListStatus } from '../lib/status-messages';
 import { useWallet } from '../contexts/WalletProvider';
 import { useOrchestrator } from '../contexts/OrchestratorProvider';
 
@@ -414,6 +415,7 @@ export function AgentsPage({ onRegisterClick }: Props) {
   const { orchestrator } = useOrchestrator();
   const [agents, setAgents] = useState<AgentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -424,7 +426,14 @@ export function AgentsPage({ onRegisterClick }: Props) {
 
   const load = async () => {
     setLoading(true);
-    try { setAgents(await fetchAgents()); } catch { /* ignore */ }
+    setLoadError(false);
+    try {
+      setAgents(await fetchAgents());
+    } catch {
+      // Network/backend failure — surface it via the status banner below
+      // instead of rendering an empty list that reads as "no agents exist".
+      setLoadError(true);
+    }
     setLoading(false);
   };
 
@@ -488,13 +497,35 @@ export function AgentsPage({ onRegisterClick }: Props) {
     setAgents(prev => prev.filter(a => a.agent_id !== id));
   };
 
+  const notice = agentsListStatus({
+    loading,
+    loadError,
+    agentCount: agents.length,
+    usingMock: agents.some(a => a.is_mock),
+  });
+
   return (
     <div className="space-y-6">
-      {agents.some(a => a.is_mock) && (
-        <div className="bg-amber-950/30 border border-amber-900/50 rounded-xl px-4 py-2.5">
-          <p className="text-xs text-amber-300/90 leading-relaxed">
-            <span className="font-semibold text-amber-300">Sample data.</span> These are example services showing the kind of AI agents, human specialists, and business services that can register on AgentPay. They are not live and cannot be hired yet: the registry backend is offline in this demo.
+      {notice && (
+        <div className={`rounded-xl px-4 py-2.5 border ${
+          notice.kind === 'backend-error'
+            ? 'bg-red-950/30 border-red-900/50'
+            : notice.kind === 'empty'
+              ? 'bg-gray-900 border-gray-800'
+              : 'bg-amber-950/30 border-amber-900/50'
+        }`}>
+          <p className="text-xs leading-relaxed text-gray-300">
+            <span className="font-semibold">{notice.title}</span>{' '}
+            <span className="text-gray-400">{notice.body}</span>
           </p>
+          {(notice.kind === 'backend-error' || notice.kind === 'empty') && (
+            <button
+              onClick={load}
+              className="mt-2 text-xs font-medium text-teal-400 hover:text-teal-300 transition-colors"
+            >
+              {notice.action} →
+            </button>
+          )}
         </div>
       )}
       {/* Search + filters */}

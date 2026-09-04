@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  ShieldCheck, Coins, Workflow, Fingerprint, Github, ArrowRight, Wallet, Lock, Eye, Zap,
-  BadgeDollarSign, CheckCircle2, ExternalLink, Sparkles, ArrowUpRight, Network, Receipt, Cpu,
+  ShieldCheck, Coins, Workflow, Fingerprint, Github, ArrowRight, Wallet, Lock, Eye,
+  BadgeDollarSign, CheckCircle2, ExternalLink, ArrowUpRight, Network, Receipt, Cpu,
 } from 'lucide-react';
 
 const SOCIALS = [

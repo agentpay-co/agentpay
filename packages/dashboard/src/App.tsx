@@ -30,6 +30,7 @@ import { Landing } from './components/Landing';
 import { useWebSocket } from './hooks/useWebSocket';
 import { fetchVaultAccount } from './lib/vault-client';
 import { submitTask, forceCompleteVaultTask } from './lib/api';
+import { submitFailureMessage } from './lib/status-messages';
 import { BACKEND_ENABLED } from './lib/config';
 
 type Page = 'run' | 'financial' | 'agents' | 'history' | 'register';
@@ -164,16 +165,21 @@ function Dashboard() {
     clearEvents();
     try {
       const r = await submitTask(task, budget, publicKey ?? undefined);
-      if (r?.error === 'insufficient_vault_balance') {
+      const failureCode =
+        r?.error ?? (r && r.feasible === false && !r.task_id ? 'infeasible' : undefined);
+      if (failureCode) {
+        const failure = submitFailureMessage(failureCode, r?.message);
         setIsRunning(false);
         setLastProgressAt(null);
-        addToast('Insufficient vault balance.', 'error');
-        if (queueItemId) advanceQueue(queueItemId, 'Insufficient vault balance');
+        addToast(`${failure.title} ${failure.body}`, 'error');
+        if (queueItemId) advanceQueue(queueItemId, failure.title);
       }
     } catch {
+      const failure = submitFailureMessage(undefined);
       setIsRunning(false);
       setLastProgressAt(null);
-      if (queueItemId) advanceQueue(queueItemId, 'Task submission failed');
+      addToast(`${failure.title} ${failure.body}`, 'error');
+      if (queueItemId) advanceQueue(queueItemId, failure.title);
     }
   }, [publicKey, clearEvents, addToast, advanceQueue, orchestrator]);
 
