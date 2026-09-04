@@ -13,6 +13,7 @@
 //! | [`init`] | One-time initialisation; sets the admin. |
 //! | [`set_vk`] | Admin-only; stores or rotates the verifying key. |
 //! | [`verify`] | Pure verification call; returns `true` iff the proof is valid. |
+//! | [`verify_policy`] | Same engine under the name AgentVault calls. |
 //! | [`get_vk_hash`] | View; returns SHA-256 of the active VK for auditability. |
 //!
 //! ## Guarantees
@@ -155,6 +156,25 @@ impl PolicyVerifier {
     /// * `nullifier`  — 32-byte replay-prevention ticket.
     /// * `proof`      — ZK proof bytes as produced by the prover (#67).
     pub fn verify(
+        env: Env,
+        commitment: BytesN<32>,
+        payee: Address,
+        amount: i128,
+        nullifier: BytesN<32>,
+        proof: Bytes,
+    ) -> Result<bool, VerifierError> {
+        Self::verify_inner(&env, &commitment, &payee, amount, &nullifier, &proof)
+    }
+
+    /// Verify a zero-knowledge proof, under the name AgentVault calls.
+    ///
+    /// This is the entrypoint `AgentVault::release_payment_proved` invokes
+    /// through its `PolicyVerifier` trait (`contracts/agent-vault/src/lib.rs`).
+    /// It executes byte-identical logic to [`PolicyVerifier::verify`] — both
+    /// delegate to the shared engine — so `verify` remains as the stable
+    /// standalone name while `verify_policy` is the canonical name for vault
+    /// wiring. Arguments, return contract, and errors match `verify` exactly.
+    pub fn verify_policy(
         env: Env,
         commitment: BytesN<32>,
         payee: Address,
