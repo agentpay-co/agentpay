@@ -42,6 +42,19 @@ pub fn verify(
     proof:      Bytes,
 ) -> Result<bool, VerifierError>
 
+/// Same engine under the name AgentVault calls.
+/// AgentVault's `PolicyVerifier` trait invokes `verify_policy` from
+/// `release_payment_proved`; `verify` remains the stable standalone name.
+/// Both execute byte-identical logic.
+pub fn verify_policy(
+    env: Env,
+    commitment: BytesN<32>,
+    payee:      Address,
+    amount:     i128,
+    nullifier:  BytesN<32>,
+    proof:      Bytes,
+) -> Result<bool, VerifierError>
+
 /// View: SHA-256 of the active verifying key.
 pub fn get_vk_hash(env: Env) -> Result<BytesN<32>, VerifierError>
 ```
