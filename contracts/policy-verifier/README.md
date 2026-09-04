@@ -1,7 +1,8 @@
 # `policy-verifier`
 
 > Standalone Soroban proof-verifier contract for private spending policies —
-> CleverCon Issue [#123](https://github.com/clevercon-protocol/clevercon/issues/123)
+> called by AgentVault via `set_policy_verifier` / `release_payment_proved`
+> (see `contracts/agent-vault/src/lib.rs`, `PolicyVerifier` trait).
 
 ---
 
