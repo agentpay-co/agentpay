@@ -145,3 +145,123 @@ async function gatePreviewsFeasible(): Promise<void> {
 
 export { gateServicesUp, gateAgentsRegistered, gatePreviewsFeasible };
 export { WS_URL, ORCHESTRATOR_URL, REGISTRY_URL };
+
+// ── Stage 4: submit, approve, and track each demo task ────────────────────────
+// The narrator approves each plan explicitly after a short beat — this is the
+// rehearsal for the live 60s approval gate (PLAN_APPROVAL_TIMEOUT_MS).
+
+interface TrackedTask {
+  resolve: (result: 'complete' | 'failed') => void;
+  taskId: string;
+  cost: number;
+}
+
+const pending = new Map<string, TrackedTask>();
+
+async function submitTask(prompt: string, budget: number): Promise<string> {
+  const res = await fetch(`${ORCHESTRATOR_URL}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Request-Id': `demo-${Date.now()}` },
+    body: JSON.stringify({ task: prompt, budget }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    fail('execute-tasks', `submit failed: ${(err as { error?: string }).error ?? 'unknown'}`);
+  }
+  const data = (await res.json()) as { task_id: string };
+  if (!data.task_id) fail('execute-tasks', 'submit response carried no task_id');
+  return data.task_id;
+}
+
+async function approveTask(taskId: string): Promise<void> {
+  const res = await fetch(`${ORCHESTRATOR_URL}/api/tasks/${taskId}/approve`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) say(`  → approval call returned ${res.status} (may have auto-approved)`);
+}
+
+function connectWatcher(onReady: () => void): WebSocket {
+  const ws = new WebSocket(WS_URL);
+  ws.on('open', onReady);
+  ws.on('message', (raw: Buffer) => {
+    let msg: { event: string; data?: Record<string, unknown> };
+    try {
+      msg = JSON.parse(raw.toString());
+    } catch {
+      return;
+    }
+    const taskId = msg.data?.task_id as string | undefined;
+    const tracker = taskId ? pending.get(taskId) : undefined;
+    if (!tracker) return;
+    switch (msg.event) {
+      case 'plan_approval_required': {
+        say('  → narrator: the plan is on screen — approving now (live: you have 60s)');
+        setTimeout(() => void approveTask(tracker.taskId), 2000);
+        break;
+      }
+      case 'plan_approved':
+      case 'plan_auto_approved':
+        say('  → plan approved, executing');
+        break;
+      case 'step_complete':
+        say(`  · step done (${String(msg.data?.agent_name ?? 'agent')})`);
+        break;
+      case 'task_complete':
+        tracker.cost = Number(msg.data?.total_cost ?? 0);
+        tracker.resolve('complete');
+        break;
+      case 'task_failed':
+      case 'task_infeasible':
+        say(`  ✗ task ended: ${msg.event} ${String(msg.data?.error ?? '')}`);
+        tracker.resolve('failed');
+        break;
+    }
+  });
+  ws.on('error', (err: Error) => fail('execute-tasks', `websocket error: ${err.message}`));
+  return ws;
+}
+
+interface TaskOutcome {
+  outcome: 'complete' | 'failed';
+  cost: number;
+}
+
+function waitForTask(taskId: string, timeoutMs = 180_000): Promise<TaskOutcome> {
+  return new Promise((resolve) => {
+    const finish = (outcome: 'complete' | 'failed') => {
+      clearTimeout(safety);
+      const tracker = pending.get(taskId);
+      pending.delete(taskId);
+      resolve({ outcome, cost: tracker?.cost ?? 0 });
+    };
+    const safety = setTimeout(() => {
+      if (pending.has(taskId)) {
+        say(`  ⚠ task ${taskId} produced no terminal event within ${timeoutMs / 1000}s`);
+        finish('failed');
+      }
+    }, timeoutMs);
+    pending.set(taskId, { taskId, cost: 0, resolve: finish });
+  });
+}
+
+export interface DemoTaskResult {
+  prompt: string;
+  budget: number;
+  task_id: string;
+  cost: number;
+}
+
+async function runDemoTask(prompt: string, budget: number, index: number): Promise<DemoTaskResult> {
+  say(`\n  [${index + 1}/${DEMO_TASKS.length}] "${prompt}" (budget $${budget})`);
+  const taskId = await submitTask(prompt, budget);
+  say(`  task_id: ${taskId}`);
+  const { outcome, cost } = await waitForTask(taskId);
+  if (outcome !== 'complete') fail('execute-tasks', `task ${taskId} did not complete`);
+  if (cost > budget) fail('execute-tasks', `task ${taskId} cost $${cost} over $${budget} budget`);
+  say(`  ✓ complete — cost $${cost.toFixed(4)} (budget $${budget})`);
+  return { prompt, budget, task_id: taskId, cost };
+}
+
+export { submitTask, approveTask, connectWatcher, waitForTask, runDemoTask };
