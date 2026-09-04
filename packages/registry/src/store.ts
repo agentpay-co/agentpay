@@ -4,6 +4,10 @@
  * All agents are stored as a single array in `data/registry.json`. Each
  * exported function reads or rewrites the whole file — writes are serialized
  * through an in-process queue and use atomic rename to prevent corruption.
+ *
+ * Set `AGENTPAY_DATA_DIR` to relocate the data directory (tests, hosted
+ * ephemeral disks). Call `flushWrites()` before shutdown to guarantee every
+ * queued write has reached the disk.
  */
 import fs from 'fs';
 import path from 'path';
@@ -12,7 +16,7 @@ import type { AgentRecord } from '@agentpay/common';
 import { writeJsonSafe, logger } from '@agentpay/common';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const REGISTRY_FILE = path.join(DATA_DIR, 'registry.json');
 
 /** In-memory cache — avoids reading stale data between queued writes. */
@@ -91,4 +95,13 @@ export function removeAgent(agentId: string): boolean {
   if (filtered.length === agents.length) return false;
   saveAgents(filtered);
   return true;
+}
+
+/**
+ * Wait until every queued write has flushed to disk.
+ * Use in graceful-shutdown hooks and tests — `saveAgents` is fire-and-forget
+ * by design so request handlers never block on disk I/O.
+ */
+export function flushWrites(): Promise<void> {
+  return writeQueue;
 }
