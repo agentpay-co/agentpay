@@ -448,6 +448,35 @@ reference for the manifest schema, payment middleware wiring, and
 self-registration pattern. The `@agentpay/agent-sdk` package (Phase 3 on the
 roadmap) will eventually package this scaffolding so you don't have to copy it.
 
+### Signing your manifest
+
+Sign your registration manifest with the wallet secret matching its
+`stellar_address` so nobody can impersonate your agent id:
+
+```ts
+import { signManifest } from '@agentpay/agent-sdk';
+
+const body = signManifest(process.env.MY_AGENT_SECRET_KEY!, manifest);
+await fetch(`${REGISTRY_URL}/register`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(body),
+});
+```
+
+Registry behavior today (transition period):
+
+| Manifest | Result |
+|---|---|
+| Valid signature | `200`, stored record has `signature_verified: true` |
+| Invalid signature (tampered, wrong key, malformed) | `401`, nothing stored |
+| Unsigned | `200`, `signature_verified: false` |
+
+The same applies to `POST /feedback` attestations (verified against the
+stored agent address). Signatures are never persisted — only the
+`signature_verified` stamp is. Expect signatures to become mandatory in a
+later release; sign now to be ready.
+
 ## Debugging
 
 - **Service logs**: `logs/<service>.log` when started via `start.sh`.

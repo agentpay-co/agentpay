@@ -4,7 +4,13 @@ import { loadAgents, findAgent, upsertAgent, removeAgent } from './store.js';
 import { updateReputation } from './reputation.js';
 import { matchCapabilities } from './search.js';
 import { validateRegistration } from './validate.js';
-import { logger, requestId, accessLog, corsMiddleware } from '@agentpay/common';
+import {
+  logger,
+  requestId,
+  accessLog,
+  corsMiddleware,
+  verifyPayloadSignature,
+} from '@agentpay/common';
 import type { AgentManifest, AgentFeedback, AgentRecord } from '@agentpay/common';
 
 const app = express();
@@ -48,10 +54,36 @@ app.post('/register', (req, res) => {
   const now = new Date().toISOString();
   const existing = findAgent(body.agent_id!);
 
+  // Optional signature admission: when a manifest arrives signed, the
+  // signature must verify against the claimed stellar_address. Unsigned
+  // manifests are still accepted during the transition period.
+  const { signature, ...manifestFields } = body as Partial<AgentManifest> & {
+    registered_by?: string;
+    signature?: string;
+  };
+  let signature_verified = false;
+  if (signature !== undefined) {
+    const ok =
+      typeof signature === 'string' &&
+      verifyPayloadSignature(
+        body.stellar_address!,
+        manifestFields as unknown as Record<string, unknown>,
+        signature,
+      );
+    if (!ok) {
+      return res.status(401).json({
+        error:
+          'Invalid manifest signature: must be base64 ed25519 over the canonical manifest by stellar_address',
+      });
+    }
+    signature_verified = true;
+  }
+
   const record: AgentRecord = {
-    ...(body as AgentManifest),
+    ...(manifestFields as AgentManifest),
     // Preserve original registered_by; allow update only if not already set
     registered_by: existing?.registered_by ?? body.registered_by,
+    signature_verified,
     registered_at: existing?.registered_at || now,
     last_seen: now,
     status: 'active',
@@ -153,6 +185,29 @@ app.post('/feedback', (req, res) => {
 
   const agent = findAgent(body.agent_id!);
   if (!agent) return res.status(404).json({ error: 'Agent not found' });
+
+  // Optional feedback attestation: when a signature is present it must
+  // verify against the stored agent address. Unsigned feedback keeps the
+  // legacy behavior.
+  const { signature, ...feedbackFields } = body as Partial<AgentFeedback> & {
+    signature?: string;
+  };
+  if (signature !== undefined) {
+    const ok =
+      typeof signature === 'string' &&
+      verifyPayloadSignature(
+        agent.stellar_address,
+        feedbackFields as unknown as Record<string, unknown>,
+        signature,
+      );
+    if (!ok) {
+      return res.status(401).json({
+        error:
+          'Invalid feedback signature: must be base64 ed25519 over the canonical feedback by the agent address',
+      });
+    }
+    logger.info(`Verified signed feedback for ${agent.name} (job ${body.job_id})`);
+  }
 
   const updated = updateReputation(agent, body as AgentFeedback);
   updated.last_seen = new Date().toISOString();

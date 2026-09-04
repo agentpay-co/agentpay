@@ -3,6 +3,14 @@ export { withX402, createPayingFetch } from './payments/x402.js';
 export { withMpp } from './payments/mpp.js';
 export { createRegistryClient, RETRY_DELAYS_MS, HEARTBEAT_MS } from './registry.js';
 export { resolveConfig, buildManifest, AgentConfigError } from './config.js';
+export {
+  signManifest,
+  signFeedback,
+  verifyManifest,
+  verifyFeedbackSignature,
+  stripSignature,
+} from './signing.js';
+export type { Signed } from './signing.js';
 
 export type {
   AgentConfig,

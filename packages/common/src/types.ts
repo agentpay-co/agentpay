@@ -19,6 +19,13 @@ export interface AgentRecord extends AgentManifest {
   status: 'active' | 'inactive' | 'new';
   /** Stellar address of the user/orchestrator who registered this agent */
   registered_by?: string;
+  /**
+   * True when the stored manifest arrived with a signature that verified
+   * against its `stellar_address`. Absent/false means unsigned (still
+   * accepted during the transition period) — never trust an agent on this
+   * flag alone until signatures become mandatory.
+   */
+  signature_verified?: boolean;
   reputation: {
     score: number;
     total_jobs: number;
