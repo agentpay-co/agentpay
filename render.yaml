@@ -40,6 +40,8 @@ services:
         value: stellar:testnet
       - key: HORIZON_URL
         value: https://horizon-testnet.stellar.org
+      - key: USDC_SAC
+        value: CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
 
   # ── Stellar Oracle ───────────────────────────────────────────────────────────
   - type: web
