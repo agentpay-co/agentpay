@@ -13,6 +13,7 @@ import {
   Address,
   nativeToScVal,
 } from '@stellar/stellar-sdk';
+import { McpToolError, withRpcTimeout, isNetworkError, type McpErrorCode } from '../tool-error.js';
 
 export const buildDepositSchema = {
   name: 'build_deposit',
@@ -50,6 +51,8 @@ interface DepositXdrResult {
     contract_id: string;
   };
   error?: string;
+  code?: McpErrorCode;
+  retryable?: boolean;
 }
 
 export async function buildDepositHandler(
@@ -66,23 +69,23 @@ export async function buildDepositHandler(
 
     // Validate inputs
     if (typeof address !== 'string' || address.trim() === '') {
-      throw new Error('address must be a non-empty string');
+      throw new McpToolError('INVALID_PARAMS', 'address must be a non-empty string');
     }
 
     if (typeof amount !== 'number' || amount <= 0) {
-      throw new Error('amount must be a positive number');
+      throw new McpToolError('INVALID_PARAMS', 'amount must be a positive number');
     }
 
     if (asset !== 'USDC') {
-      throw new Error('Only USDC deposits are currently supported');
+      throw new McpToolError('INVALID_PARAMS', 'Only USDC deposits are currently supported');
     }
 
     if (!config.vault_contract_id || config.vault_contract_id.trim() === '') {
-      throw new Error('Vault contract ID not configured');
+      throw new McpToolError('NOT_CONFIGURED', 'Vault contract ID not configured');
     }
 
     if (!config.usdc_sac || config.usdc_sac.trim() === '') {
-      throw new Error('USDC SAC address not configured');
+      throw new McpToolError('NOT_CONFIGURED', 'USDC SAC address not configured');
     }
 
     const stellarAddress = address.trim();
@@ -92,12 +95,12 @@ export async function buildDepositHandler(
     try {
       new Address(stellarAddress);
     } catch {
-      throw new Error('Invalid Stellar address format');
+      throw new McpToolError('INVALID_PARAMS', 'Invalid Stellar address format');
     }
 
     // Build unsigned XDR
     const server = new SorobanRpc.Server(config.soroban_rpc_url, { allowHttp: false });
-    const account = await server.getAccount(stellarAddress);
+    const account = await withRpcTimeout(server.getAccount(stellarAddress), 'getAccount');
     const contract = new Contract(config.vault_contract_id);
 
     // Convert USDC to stroops (7 decimal places)
@@ -121,9 +124,9 @@ export async function buildDepositHandler(
       .build();
 
     // Simulate transaction
-    const simulated = await server.simulateTransaction(tx);
+    const simulated = await withRpcTimeout(server.simulateTransaction(tx), 'simulateTransaction');
     if (SorobanRpc.Api.isSimulationError(simulated)) {
-      throw new Error(`Simulation failed: ${simulated.error}`);
+      throw new McpToolError('CONTRACT_ERROR', `Simulation failed: ${simulated.error}`);
     }
 
     // Assemble and return unsigned XDR
@@ -150,9 +153,24 @@ export async function buildDepositHandler(
       ],
     };
   } catch (error) {
+    const failure =
+      error instanceof McpToolError
+        ? error
+        : isNetworkError(error)
+          ? new McpToolError(
+              'RPC_UNREACHABLE',
+              `Soroban RPC at ${config.soroban_rpc_url} is unreachable`,
+              true,
+            )
+          : new McpToolError(
+              'CONTRACT_ERROR',
+              error instanceof Error ? error.message : String(error),
+            );
     const result: DepositXdrResult = {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: failure.message,
+      code: failure.code,
+      retryable: failure.retryable,
     };
 
     return {

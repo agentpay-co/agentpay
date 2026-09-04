@@ -13,6 +13,7 @@ import {
   Address,
   scValToNative,
 } from '@stellar/stellar-sdk';
+import { McpToolError, withRpcTimeout, isNetworkError, toErrorContent } from '../tool-error.js';
 
 export const getVaultBalanceSchema = {
   name: 'get_vault_balance',
@@ -50,15 +51,15 @@ export async function getVaultBalanceHandler(
     const { address } = args;
 
     if (typeof address !== 'string' || address.trim() === '') {
-      throw new Error('address must be a non-empty string');
+      throw new McpToolError('INVALID_PARAMS', 'address must be a non-empty string');
     }
 
     if (!config.vault_contract_id || config.vault_contract_id.trim() === '') {
-      throw new Error('Vault contract ID not configured');
+      throw new McpToolError('NOT_CONFIGURED', 'Vault contract ID not configured');
     }
 
     if (!config.usdc_sac || config.usdc_sac.trim() === '') {
-      throw new Error('USDC SAC address not configured');
+      throw new McpToolError('NOT_CONFIGURED', 'USDC SAC address not configured');
     }
 
     const stellarAddress = address.trim();
@@ -67,7 +68,7 @@ export async function getVaultBalanceHandler(
     try {
       new Address(stellarAddress);
     } catch {
-      throw new Error('Invalid Stellar address format');
+      throw new McpToolError('INVALID_PARAMS', 'Invalid Stellar address format');
     }
 
     const server = new SorobanRpc.Server(config.soroban_rpc_url, { allowHttp: false });
@@ -78,7 +79,7 @@ export async function getVaultBalanceHandler(
 
     try {
       // get_balance(user, asset) returns the total (available + locked) in stroops.
-      const account = await server.getAccount(stellarAddress);
+      const account = await withRpcTimeout(server.getAccount(stellarAddress), 'getAccount');
       const balanceTx = new TransactionBuilder(account, {
         fee: BASE_FEE,
         networkPassphrase: config.network_passphrase,
@@ -89,7 +90,10 @@ export async function getVaultBalanceHandler(
         .setTimeout(300)
         .build();
 
-      const simulation = await server.simulateTransaction(balanceTx);
+      const simulation = await withRpcTimeout(
+        server.simulateTransaction(balanceTx),
+        'simulateTransaction',
+      );
 
       if (SorobanRpc.Api.isSimulationError(simulation)) {
         // Simulation failed - could be various reasons, propagate the error
@@ -111,7 +115,10 @@ export async function getVaultBalanceHandler(
         .setTimeout(300)
         .build();
 
-      const availableSimulation = await server.simulateTransaction(availableTx);
+      const availableSimulation = await withRpcTimeout(
+        server.simulateTransaction(availableTx),
+        'simulateTransaction',
+      );
       if (!SorobanRpc.Api.isSimulationError(availableSimulation)) {
         const availableStroops = scValToNative(availableSimulation.result!.retval);
         availableUsdc = Number(availableStroops) / STROOPS_PER_USDC;
@@ -159,21 +166,17 @@ export async function getVaultBalanceHandler(
       throw contractError;
     }
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              error: 'Get vault balance failed',
-              message: error instanceof Error ? error.message : String(error),
-              address: args.address,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    if (isNetworkError(error)) {
+      return toErrorContent(
+        'get_vault_balance',
+        new McpToolError(
+          'RPC_UNREACHABLE',
+          `Soroban RPC at ${config.soroban_rpc_url} is unreachable`,
+          true,
+        ),
+        { address: args.address },
+      );
+    }
+    return toErrorContent('get_vault_balance', error, { address: args.address });
   }
 }
