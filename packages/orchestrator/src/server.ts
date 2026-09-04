@@ -16,7 +16,6 @@
  */
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
@@ -34,7 +33,13 @@ import {
   Operation,
 } from '@stellar/stellar-sdk';
 import type { AgentRecord } from '@agentpay/common';
-import { accountExplorerUrl, requestId, accessLog, propagationHeaders } from '@agentpay/common';
+import {
+  accountExplorerUrl,
+  requestId,
+  accessLog,
+  propagationHeaders,
+  corsMiddleware,
+} from '@agentpay/common';
 import { checkFeasibility } from './capability-check.js';
 import { createPlan } from './planner.js';
 import { validatePlan } from './validator.js';
@@ -315,7 +320,7 @@ function waitForApproval(task_id: string, planPayload: unknown): Promise<void> {
 // ── Express app ───────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(cors());
+app.use(corsMiddleware('orchestrator'));
 app.use(express.json());
 app.use(requestId);
 app.use(accessLog({ service: 'orchestrator', skipPaths: ['/health'] }));
