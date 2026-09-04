@@ -11,7 +11,7 @@ import path from 'path';
 import { writeJsonSafe } from '@agentpay/common';
 
 const __dirname = path.dirname(path.resolve(process.argv[1]));
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const LOG_PATH = path.join(DATA_DIR, 'activity-log.json');
 
 export type ActivityEventType =

@@ -10,7 +10,7 @@ import path from 'path';
 import { writeJsonSafe } from '@agentpay/common';
 
 const __dirname = path.dirname(path.resolve(process.argv[1]));
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const LEDGER_PATH = path.join(DATA_DIR, 'vault-ledger.json');
 
 export type VaultTxType = 'deposit' | 'withdrawal' | 'payment' | 'budget_lock' | 'adjustment';

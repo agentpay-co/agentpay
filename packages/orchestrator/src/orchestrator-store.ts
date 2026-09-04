@@ -14,7 +14,7 @@ import { writeJsonSafe } from '@agentpay/common';
 
 const __dirname = path.dirname(path.resolve(process.argv[1]));
 // process.argv[1] = .../packages/orchestrator/src/server.ts → go up 3 levels to workspace root
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const STORE_PATH = path.join(DATA_DIR, 'orchestrators.json');
 
 export interface OrchestratorRecord {

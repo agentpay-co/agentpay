@@ -42,7 +42,7 @@ import {
 import * as orchestratorStore from './orchestrator-store.js';
 
 const __dirname = path.dirname(path.resolve(process.argv[1]));
-const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
+const DATA_DIR = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', '..', '..', 'data');
 const AUDIT_PATH = path.join(DATA_DIR, 'reconciliation-audit.json');
 
 const STROOPS_PER_USDC = 10_000_000;
