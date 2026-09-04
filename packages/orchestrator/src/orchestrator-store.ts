@@ -2,8 +2,9 @@
  * Orchestrator store — persists per-user orchestrator records in data/orchestrators.json.
  *
  * Each user gets exactly one orchestrator keypair, generated on first creation.
- * The secret key is stored in plaintext for the hackathon.
- * In production this should be encrypted at rest.
+ * The secret key is stored in plaintext for the hackathon (owner-only file
+ * permissions mitigate casual exposure; see the rotation runbook in
+ * docs/development.md). In production this should be encrypted at rest.
  *
  * Uses atomic rename writes to prevent corruption on process crash.
  */
@@ -37,7 +38,7 @@ function load(): Store {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     if (!fs.existsSync(STORE_PATH)) {
-      writeJsonSafe(STORE_PATH, {});
+      writeJsonSafe(STORE_PATH, {}, { mode: 0o600 });
     }
     cache = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8')) as Store;
   } catch {
@@ -47,7 +48,8 @@ function load(): Store {
 }
 
 function save(store: Store): void {
-  writeJsonSafe(STORE_PATH, store);
+  // Owner-only: records contain orchestrator secret keys in plaintext.
+  writeJsonSafe(STORE_PATH, store, { mode: 0o600 });
   cache = store;
 }
 
