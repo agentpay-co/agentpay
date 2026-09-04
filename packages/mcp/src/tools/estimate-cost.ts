@@ -5,6 +5,7 @@
  */
 
 import type { AgentRecord } from '@agentpay/common';
+import { McpToolError, fetchWithTimeout, isNetworkError, toErrorContent } from '../tool-error.js';
 
 export const estimateCostSchema = {
   name: 'estimate_cost',
@@ -54,7 +55,7 @@ export async function estimateCostHandler(
     const { capability } = args;
 
     if (typeof capability !== 'string' || capability.trim() === '') {
-      throw new Error('capability must be a non-empty string');
+      throw new McpToolError('INVALID_PARAMS', 'capability must be a non-empty string');
     }
 
     const searchCapability = capability.trim();
@@ -64,20 +65,27 @@ export async function estimateCostHandler(
       capabilities: searchCapability,
     });
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-    let response;
+    let response: Response;
     try {
-      response = await fetch(`${config.registry_url}/agents?${searchParams.toString()}`, {
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
+      response = await fetchWithTimeout(`${config.registry_url}/agents?${searchParams.toString()}`);
+    } catch (error) {
+      if (error instanceof McpToolError) throw error;
+      if (isNetworkError(error)) {
+        throw new McpToolError(
+          'REGISTRY_UNREACHABLE',
+          `Registry at ${config.registry_url} is unreachable`,
+          true,
+        );
+      }
+      throw error;
     }
 
     if (!response.ok) {
-      throw new Error(`Registry search failed: ${response.status} ${response.statusText}`);
+      throw new McpToolError(
+        'REGISTRY_ERROR',
+        `Registry search failed: ${response.status} ${response.statusText}`,
+        response.status >= 500,
+      );
     }
 
     const data = await response.json();
@@ -172,21 +180,6 @@ export async function estimateCostHandler(
       ],
     };
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              error: 'Cost estimation failed',
-              message: error instanceof Error ? error.message : String(error),
-              capability: args.capability,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return toErrorContent('estimate_cost', error, { capability: args.capability });
   }
 }
