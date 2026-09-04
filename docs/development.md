@@ -463,7 +463,8 @@ roadmap) will eventually package this scaffolding so you don't have to copy it.
 - **Vault ledger / activity log / task results**: inspect
   `data/vault-ledger.json`, `data/activity-log.json`, and
   `data/task-results.json` directly for a record of what the orchestrator has
-  done.
+  done. Better: run `npm run reconcile` first — it cross-checks the three
+  stores and names any drift (see [reconciliation](reconciliation.md)).
 
 ### Tracing a request
 

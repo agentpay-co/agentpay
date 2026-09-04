@@ -27,6 +27,7 @@
     "fund-testnet-usdc": "npx tsx scripts/fund-testnet-usdc.ts",
     "add-usdc-trustlines": "npx tsx scripts/add-usdc-trustlines.ts",
     "distribute-usdc": "npx tsx scripts/distribute-usdc.ts",
+    "reconcile": "npx tsx scripts/reconcile.ts",
     "build": "npm run build:dashboard && npm run build:registry && npm run build:orchestrator && npm run build:oracle && npm run build:webintel && npm run build:webintel2 && npm run build:analysis && npm run build:reporter",
     "typecheck": "bash scripts/typecheck.sh",
     "lint": "eslint .",

@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Offline store audit (`npm run reconcile`).** `scripts/reconcile.ts`
+  cross-checks `vault-ledger.json`, `activity-log.json` and
+  `task-results.json` against each other with no chain access: duplicate ids,
+  ledger/activity payment mismatches, results without completions,
+  negative derived balances (errors) plus unfinished-task and cost-divergence
+  warnings. `--json` for machines, `--strict` for CI gates; exit 0/1/2.
+  See `docs/reconciliation.md` for the finding codes.
 - **Private spending-policy commitments (`#122`).** `AgentVault` can now bind a
   private policy commitment to a task at lock time and gate every release for
   that task on a zero-knowledge proof:
