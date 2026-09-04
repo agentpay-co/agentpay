@@ -489,3 +489,21 @@ describe('GET /agents pagination', () => {
     expect(res.body.agents.length).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Request IDs
+// ---------------------------------------------------------------------------
+
+describe('request IDs', () => {
+  it('mints and echoes X-Request-Id on every response', async () => {
+    const res = await request(app).get('/health');
+    expect(res.status).toBe(200);
+    expect(typeof res.headers['x-request-id']).toBe('string');
+    expect(res.headers['x-request-id']).not.toHaveLength(0);
+  });
+
+  it('echoes a caller-supplied request id unchanged', async () => {
+    const res = await request(app).get('/health').set('X-Request-Id', 'trace-abc');
+    expect(res.headers['x-request-id']).toBe('trace-abc');
+  });
+});
