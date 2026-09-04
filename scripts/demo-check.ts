@@ -13,6 +13,15 @@
  * Exit codes: 0 all demo tasks completed, 1 a stage failed, 2 services down.
  */
 import WebSocket from 'ws';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { auditStores } from '../packages/orchestrator/src/offline-audit.js';
+import type { VaultLedgerEntry } from '../packages/orchestrator/src/vault-ledger.js';
+import type { ActivityEvent } from '../packages/orchestrator/src/activity-store.js';
+import type { TaskResultEntry } from '../packages/orchestrator/src/task-results.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
@@ -79,7 +88,7 @@ async function gateAgentsRegistered(): Promise<number> {
     fail('agents-registered', `could not reach ${REGISTRY_URL}/agents`);
   }
   const data = (await res!.json()) as unknown;
-  const agents = Array.isArray(data) ? data : (data as { agents?: unknown[] }).agents ?? [];
+  const agents = Array.isArray(data) ? data : ((data as { agents?: unknown[] }).agents ?? []);
   if (agents.length === 0) {
     fail(
       'agents-registered',
@@ -265,3 +274,80 @@ async function runDemoTask(prompt: string, budget: number, index: number): Promi
 }
 
 export { submitTask, approveTask, connectWatcher, waitForTask, runDemoTask };
+
+// ── Stage 5: local stores still reconcile ─────────────────────────────────────
+
+function readJsonArray<T>(filePath: string): T[] {
+  if (!fs.existsSync(filePath)) return [];
+  const parsed: unknown = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  return Array.isArray(parsed) ? (parsed as T[]) : [];
+}
+
+async function gateStoresReconcile(): Promise<void> {
+  stage('Stage 5/5 — local stores reconcile');
+  const dataDir = process.env.AGENTPAY_DATA_DIR ?? path.join(__dirname, '..', 'data');
+  const findings = auditStores({
+    ledger: readJsonArray<VaultLedgerEntry>(path.join(dataDir, 'vault-ledger.json')),
+    activity: readJsonArray<ActivityEvent>(path.join(dataDir, 'activity-log.json')),
+    results: readJsonArray<TaskResultEntry>(path.join(dataDir, 'task-results.json')),
+  });
+  const errors = findings.filter((f) => f.severity === 'error');
+  for (const warning of findings.filter((f) => f.severity === 'warn')) {
+    say(`  ⚠ [${warning.code}] ${warning.message}`);
+  }
+  if (errors.length > 0) {
+    for (const error of errors) say(`  ✗ [${error.code}] ${error.message}`);
+    fail('stores-reconcile', `${errors.length} reconciliation error(s) — run npm run reconcile`);
+  }
+  say('  ✓ ledger, activity log and task results are consistent');
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+async function main(): Promise<void> {
+  say('╔════════════════════════════════════════╗');
+  say('║  AgentPay Demo Check (fixed script)    ║');
+  say('║  3 tasks · explicit approval · audited ║');
+  say('╚════════════════════════════════════════╝');
+
+  await gateServicesUp();
+  await gateAgentsRegistered();
+  await gatePreviewsFeasible();
+
+  stage('Stage 4/5 — execute demo tasks');
+  const ws = await new Promise<WebSocket>((resolve) => {
+    const socket = connectWatcher(() => resolve(socket));
+  });
+  const startedAt = Date.now();
+  const results: DemoTaskResult[] = [];
+  try {
+    for (let i = 0; i < DEMO_TASKS.length; i++) {
+      results.push(await runDemoTask(DEMO_TASKS[i].prompt, DEMO_TASKS[i].budget, i));
+    }
+  } finally {
+    ws.close();
+  }
+
+  await gateStoresReconcile();
+
+  const totalCost = results.reduce((sum, r) => sum + r.cost, 0);
+  const totalBudget = results.reduce((sum, r) => sum + r.budget, 0);
+  say('\n═══════════════════════════════════════════');
+  say('  Demo check PASSED');
+  say('═══════════════════════════════════════════');
+  for (const r of results) {
+    say(`  ✓ "${r.prompt.slice(0, 52)}…" — $${r.cost.toFixed(4)} / $${r.budget}`);
+  }
+  say(`  Total: $${totalCost.toFixed(4)} / $${totalBudget} across ${results.length} tasks`);
+  say(`  Wall time: ${((Date.now() - startedAt) / 1000).toFixed(1)}s`);
+  say('═══════════════════════════════════════════');
+}
+
+const isMain =
+  process.argv[1] !== undefined && path.resolve(process.argv[1]).endsWith('demo-check.ts');
+if (isMain) {
+  main().catch((err) => {
+    console.error(`[demo-check] Fatal: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  });
+}
