@@ -465,6 +465,25 @@ roadmap) will eventually package this scaffolding so you don't have to copy it.
   `data/task-results.json` directly for a record of what the orchestrator has
   done.
 
+### Tracing a request
+
+Every service mints or echoes an `X-Request-Id` on each REST response and
+writes one structured access line per request (method, path, status,
+duration, request id). To follow a task across services:
+
+```bash
+# Pass your own id and grep it across all service logs
+curl -H 'X-Request-Id: demo-1' -X POST http://localhost:3000/api/tasks/preview \
+  -H 'Content-Type: application/json' -d '{"prompt":"...","budget":1.0}'
+grep -h 'demo-1' logs/*.log
+```
+
+The orchestrator forwards the caller's id to the registry, so the same id
+appears in both logs. Background execution has no inbound request — there
+the `task_id` (WS events, activity log) is the correlation id. Services log
+human-readable lines locally and single-line JSON when
+`NODE_ENV=production`.
+
 ## Getting help
 
 Open an issue (use the bug report or contributor issue template), or email
