@@ -33,6 +33,9 @@ STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"
 # Contract addresses — set after fresh deployment
 AGENT_VAULT_CONTRACT_ID=C... # ← run cd contracts/agent-vault && ./deploy.sh
 USDC_SAC=CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA
+
+# Per-request timeout for registry and RPC calls (milliseconds, default 10000, min 100)
+# MCP_REQUEST_TIMEOUT_MS=10000
 ```
 
 ## Usage
@@ -207,16 +210,31 @@ This tests:
 - **Read-only vault operations**: Balance queries are view-only via Soroban RPC
 - **Unsigned XDR only**: Payment tools return unsigned transaction XDR that must be signed by the client's wallet
 - **No custody**: Maintains AgentPay's non-custodial guarantee
-
 ## Error Handling
 
 All tools return structured errors when:
+
 - Registry or RPC endpoints are unreachable
 - Invalid parameters are provided
 - Agents or vault states are not found
 - Transaction building fails
 
 Errors include clear messages and preserve the original request context.
+
+### Error codes
+
+Failures carry `{ error: { tool, code, message, retryable } }` (build tools
+use `{ success: false, error, code, retryable }` to keep their XDR envelope):
+
+| Code | Meaning | Retryable |
+|---|---|---|
+| `INVALID_PARAMS` | Bad tool arguments | No |
+| `NOT_CONFIGURED` | Vault contract ID or USDC SAC unset | No (fix config) |
+| `REGISTRY_UNREACHABLE` | Registry connection failed | Yes |
+| `REGISTRY_ERROR` | Registry returned an error status (5xx retryable, 4xx not) | Depends |
+| `RPC_UNREACHABLE` | Soroban RPC connection failed | Yes |
+| `RPC_TIMEOUT` / `REQUEST_TIMEOUT` | Call exceeded `MCP_REQUEST_TIMEOUT_MS` | Yes |
+| `CONTRACT_ERROR` | Simulation failed or another contract-level error | No |
 
 ## Development
 

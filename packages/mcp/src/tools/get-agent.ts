@@ -5,6 +5,7 @@
  */
 
 import type { AgentRecord } from '@agentpay/common';
+import { McpToolError, fetchWithTimeout, isNetworkError, toErrorContent } from '../tool-error.js';
 
 export const getAgentSchema = {
   name: 'get_agent',
@@ -29,22 +30,27 @@ export async function getAgentHandler(
     const { id } = args;
 
     if (typeof id !== 'string' || id.trim() === '') {
-      throw new Error('id must be a non-empty string');
+      throw new McpToolError('INVALID_PARAMS', 'id must be a non-empty string');
     }
 
     const agentId = id.trim();
 
     // Call registry to get agent details
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-    let response;
+    let response: Response;
     try {
-      response = await fetch(`${config.registry_url}/agents/${encodeURIComponent(agentId)}`, {
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeoutId);
+      response = await fetchWithTimeout(
+        `${config.registry_url}/agents/${encodeURIComponent(agentId)}`,
+      );
+    } catch (error) {
+      if (error instanceof McpToolError) throw error;
+      if (isNetworkError(error)) {
+        throw new McpToolError(
+          'REGISTRY_UNREACHABLE',
+          `Registry at ${config.registry_url} is unreachable`,
+          true,
+        );
+      }
+      throw error;
     }
 
     if (response.status === 404) {
@@ -67,7 +73,11 @@ export async function getAgentHandler(
     }
 
     if (!response.ok) {
-      throw new Error(`Registry request failed: ${response.status} ${response.statusText}`);
+      throw new McpToolError(
+        'REGISTRY_ERROR',
+        `Registry request failed: ${response.status} ${response.statusText}`,
+        response.status >= 500,
+      );
     }
 
     const agent: AgentRecord = await response.json();
@@ -110,21 +120,6 @@ export async function getAgentHandler(
       ],
     };
   } catch (error) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              error: 'Get agent failed',
-              message: error instanceof Error ? error.message : String(error),
-              agent_id: args.id,
-            },
-            null,
-            2,
-          ),
-        },
-      ],
-    };
+    return toErrorContent('get_agent', error, { agent_id: args.id });
   }
 }
