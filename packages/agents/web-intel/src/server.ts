@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { requestId, accessLog } from '@agentpay/common';
 import Anthropic from '@anthropic-ai/sdk';
 import { Keypair } from '@stellar/stellar-sdk';
 import { paymentMiddleware, x402ResourceServer } from '@x402/express';
@@ -36,6 +37,8 @@ const resourceServer = new x402ResourceServer(facilitatorClient).register(
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(requestId);
+app.use(accessLog({ service: 'web-intel', skipPaths: ['/health'] }));
 
 // ── Unpaid endpoints ──────────────────────────────────────────────
 app.get('/health', (_req, res) => {
