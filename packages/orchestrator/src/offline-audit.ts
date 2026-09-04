@@ -24,6 +24,7 @@ export type FindingCode =
   | 'activity-payment-without-ledger'
   | 'result-without-completion'
   | 'unfinished-task'
+  | 'result-cost-mismatch'
   | 'negative-derived-balance'
   | 'unreadable-store';
 
@@ -55,6 +56,7 @@ export function auditStores(input: AuditInput): AuditFinding[] {
   checkPayments(input, findings);
   checkCompletions(input, findings);
   checkBalances(input, findings);
+  checkResultCosts(input, findings);
   return findings;
 }
 
@@ -68,7 +70,10 @@ export function formatFindings(findings: AuditFinding[], options: ReportOptions 
   if (findings.length === 0) return 'OK: ledger, activity log and task results are consistent.';
   return findings
     .map((f) => {
-      const where = [f.task_id ? `task=${f.task_id}` : '', f.user_address ? `user=${f.user_address}` : '']
+      const where = [
+        f.task_id ? `task=${f.task_id}` : '',
+        f.user_address ? `user=${f.user_address}` : '',
+      ]
         .filter(Boolean)
         .join(' ');
       return `${f.severity.toUpperCase()} [${f.code}] ${f.message}${where ? ` (${where})` : ''}`;
@@ -222,7 +227,10 @@ function checkBalances(input: AuditInput, findings: AuditFinding[]): void {
         break;
       case 'adjustment':
         if (tx.adjustment_target === 'balance') {
-          add(tx.user_address, tx.adjustment_direction === 'decrease' ? -tx.amount_usdc : tx.amount_usdc);
+          add(
+            tx.user_address,
+            tx.adjustment_direction === 'decrease' ? -tx.amount_usdc : tx.amount_usdc,
+          );
         }
         break;
       case 'budget_lock':
@@ -237,6 +245,33 @@ function checkBalances(input: AuditInput, findings: AuditFinding[]): void {
         code: 'negative-derived-balance',
         message: `derived settled balance for ${user} is ${value.toFixed(6)} USDC (deposits − withdrawals − payments)`,
         user_address: user,
+      });
+    }
+  }
+}
+
+/**
+ * A stored result's total_cost should equal the sum of its released
+ * payments. Warn-only: estimators and partial executions can legitimately
+ * drift by more than float dust, but a large gap means executor accounting
+ * (or a hand-edited store) deserves a look.
+ */
+function checkResultCosts(input: AuditInput, findings: AuditFinding[]): void {
+  const paidByTask = new Map<string, number>();
+  for (const e of input.activity) {
+    if (e.event === 'payment_released' && e.amount_usdc !== undefined) {
+      paidByTask.set(e.task_id, (paidByTask.get(e.task_id) ?? 0) + e.amount_usdc);
+    }
+  }
+  for (const r of input.results) {
+    const paid = paidByTask.get(r.task_id) ?? 0;
+    if (Math.abs(paid - r.total_cost) > AMOUNT_EPSILON) {
+      findings.push({
+        severity: 'warn',
+        code: 'result-cost-mismatch',
+        message: `task result total_cost ${r.total_cost} USDC differs from released payments total ${paid.toFixed(6)} USDC`,
+        task_id: r.task_id,
+        user_address: r.user_address,
       });
     }
   }

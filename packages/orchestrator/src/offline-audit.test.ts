@@ -79,8 +79,9 @@ describe('auditStores', () => {
     const input = balanced();
     input.activity = input.activity.filter((e) => e.event !== 'payment_released');
     const findings = auditStores(input);
-    expect(findings.map((f) => f.code)).toContain('ledger-payment-without-activity');
-    expect(findings.every((f) => f.severity === 'error')).toBe(true);
+    const paymentFinding = findings.filter((f) => f.code === 'ledger-payment-without-activity');
+    expect(paymentFinding).toHaveLength(1);
+    expect(paymentFinding[0].severity).toBe('error');
   });
 
   it('detects an activity payment with no ledger entry', () => {
@@ -164,5 +165,19 @@ describe('formatFindings / auditExitCode', () => {
     });
     expect(auditExitCode(findings)).toBe(0);
     expect(auditExitCode(findings, { strict: true })).toBe(1);
+  });
+});
+
+describe('result cost cross-check', () => {
+  it('warns when total_cost differs from released payments', () => {
+    const input = balanced();
+    input.results[0].total_cost = 99.99;
+    const findings = auditStores(input);
+    expect(findings.map((f) => f.code)).toContain('result-cost-mismatch');
+    expect(findings.every((f) => f.severity === 'warn')).toBe(true);
+  });
+
+  it('stays quiet when costs reconcile', () => {
+    expect(auditStores(balanced()).map((f) => f.code)).not.toContain('result-cost-mismatch');
   });
 });
