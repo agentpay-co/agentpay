@@ -4,6 +4,9 @@ import { MOCK_AGENTS } from './mock-agents';
 
 const BASE = API_BASE; // '' = same origin (orchestrator serves API + dashboard)
 
+/** Prefix a backend path with the configured API base (supports split frontend/backend deploys). */
+export const apiUrl = (path: string) => `${BASE}${path}`;
+
 export async function submitTask(task: string, budget: number, userAddress?: string) {
   if (!BACKEND_ENABLED) throw new BackendOfflineError();
   const res = await fetch(`${BASE}/api/tasks`, {
@@ -108,7 +111,7 @@ export async function renameAgent(agent_id: string, name: string, requester_addr
 
 // Rename the user's orchestrator
 export async function renameOrchestrator(user_address: string, name: string) {
-  const res = await fetch('/api/orchestrators/rename', {
+  const res = await fetch(apiUrl('/api/orchestrators/rename'), {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_address, name }),
@@ -120,7 +123,7 @@ export async function renameOrchestrator(user_address: string, name: string) {
 
 // Delete an agent from registry — requester_address must match agent's stellar_address
 export async function deleteAgent(agent_id: string, requester_address: string) {
-  const res = await fetch(`/api/agents/${encodeURIComponent(agent_id)}`, {
+  const res = await fetch(apiUrl(`/api/agents/${encodeURIComponent(agent_id)}`), {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ requester_address }),

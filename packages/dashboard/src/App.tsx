@@ -31,7 +31,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { fetchVaultAccount } from './lib/vault-client';
 import { submitTask, forceCompleteVaultTask } from './lib/api';
 import { submitFailureMessage } from './lib/status-messages';
-import { BACKEND_ENABLED } from './lib/config';
+import { BACKEND_ENABLED, WS_URL as WS_URL_CONFIG } from './lib/config';
 
 type Page = 'run' | 'financial' | 'agents' | 'history' | 'register';
 
@@ -106,7 +106,7 @@ function Dashboard() {
   // No backend means no live activity socket; leave it empty so we do not
   // open a doomed connection that just retries and shows a false red dot.
   const WS_URL = BACKEND_ENABLED
-    ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
+    ? (WS_URL_CONFIG || `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`)
     : '';
   const { events, connected, clearEvents } = useWebSocket(WS_URL);
 

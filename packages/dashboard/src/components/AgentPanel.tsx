@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bot, Star, RefreshCw, Trash2, Zap } from 'lucide-react';
-import { fetchAgents } from '../lib/api';
+import { fetchAgents, apiUrl } from '../lib/api';
 
 interface AgentRecord {
   agent_id: string;
@@ -54,7 +54,7 @@ export function AgentPanel() {
     setDeleting(agent_id);
     setConfirmId(null);
     try {
-      const r = await fetch(`/api/agents/${encodeURIComponent(agent_id)}`, { method: 'DELETE' });
+      const r = await fetch(apiUrl(`/api/agents/${encodeURIComponent(agent_id)}`), { method: 'DELETE' });
       if (r.ok) setAgents(prev => prev.filter(a => a.agent_id !== agent_id));
     } catch { /* ignore */ }
     setDeleting(null);

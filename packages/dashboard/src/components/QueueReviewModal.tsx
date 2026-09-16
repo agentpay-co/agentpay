@@ -4,6 +4,7 @@ import {
   RefreshCw, ChevronDown, Zap, Clock, Pencil, RotateCcw,
 } from 'lucide-react';
 import type { QueueItem } from './TaskQueue';
+import { apiUrl } from '../lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ function fmtDelay(ms: number): string {
 }
 
 async function fetchPreview(task: string, budget: number) {
-  const res = await fetch('/api/tasks/preview', {
+  const res = await fetch(apiUrl('/api/tasks/preview'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ task, budget }),

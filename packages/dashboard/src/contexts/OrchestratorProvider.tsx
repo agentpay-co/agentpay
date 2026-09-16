@@ -7,6 +7,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useWallet } from './WalletProvider';
 import { BACKEND_ENABLED } from '../lib/config';
+import { apiUrl } from '../lib/api';
 import { fetchUserConfig } from '../lib/vault-client';
 
 export interface OrchestratorInfo {
@@ -74,7 +75,7 @@ export function OrchestratorProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/orchestrators/${encodeURIComponent(publicKey)}`);
+      const res = await fetch(apiUrl(`/api/orchestrators/${encodeURIComponent(publicKey)}`));
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
 
@@ -84,14 +85,14 @@ export function OrchestratorProvider({ children }: { children: ReactNode }) {
         if (stored) {
           try {
             const record = JSON.parse(stored);
-            const restoreRes = await fetch('/api/orchestrators/restore', {
+            const restoreRes = await fetch(apiUrl('/api/orchestrators/restore'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(record),
             });
             if (restoreRes.ok) {
               // Re-fetch now that server knows about it
-              const res2 = await fetch(`/api/orchestrators/${encodeURIComponent(publicKey)}`);
+              const res2 = await fetch(apiUrl(`/api/orchestrators/${encodeURIComponent(publicKey)}`));
               const data2 = await res2.json();
               if (data2.exists) {
                 setOrchestrator({

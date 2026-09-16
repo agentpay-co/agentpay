@@ -4,6 +4,7 @@ import { useWallet } from '../contexts/WalletProvider';
 import { useOrchestrator } from '../contexts/OrchestratorProvider';
 import { Keypair } from '@stellar/stellar-sdk';
 import { BACKEND_ENABLED } from '../lib/config';
+import { apiUrl } from '../lib/api';
 import { buildRegisterOrchestratorXdr, submitVaultXdr } from '../lib/vault-client';
 
 const EXAMPLE_NAMES = ['Phoenix', 'Atlas', 'Sage', 'Nova', 'Orion', 'Ember'];
@@ -58,7 +59,7 @@ export function CreateOrchestrator() {
       }
 
       // 1. Ask server to create the orchestrator keypair + fund via Friendbot
-      const createRes = await fetch('/api/orchestrators', {
+      const createRes = await fetch(apiUrl('/api/orchestrators'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,7 +87,7 @@ export function CreateOrchestrator() {
         setStep('signing');
         const signed = await signTransaction(registration_xdr, 'Test SDF Network ; September 2015');
 
-        const confirmRes = await fetch('/api/orchestrators/confirm', {
+        const confirmRes = await fetch(apiUrl('/api/orchestrators/confirm'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ user_address: publicKey, signed_xdr: signed }),

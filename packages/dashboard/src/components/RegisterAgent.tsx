@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { PlusCircle, Check, AlertCircle, RefreshCw, Wallet, ExternalLink, Copy } from 'lucide-react';
 import { useWallet } from '../contexts/WalletProvider';
+import { apiUrl } from '../lib/api';
 
 const REGISTRY_URL = '/api';
 
@@ -80,7 +81,7 @@ export function RegisterAgent() {
     if (form.provision_wallet) {
       setStatus('provisioning');
       try {
-        const res = await fetch('/api/provision-wallet', { method: 'POST' });
+        const res = await fetch(apiUrl('/api/provision-wallet'), { method: 'POST' });
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
           throw new Error(err.error ?? 'Wallet provisioning failed');
