@@ -137,7 +137,8 @@ AVAIL=$(stellar contract invoke \
   --network-passphrase "Test SDF Network ; September 2015" \
   --source "$ORCHESTRATOR_SECRET_KEY" \
   -- get_available \
-  --user "$ORCHESTRATOR_PUBLIC_KEY")
+  --user "$ORCHESTRATOR_PUBLIC_KEY" \
+  --asset "$USDC_SAC")
 echo "[deploy] get_available = $AVAIL (expected 0)"
 
 # ── Output ────────────────────────────────────────────────────────────────────

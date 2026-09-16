@@ -126,7 +126,8 @@ This builds to WASM, deploys, initializes, runs a smoke test, and writes `AGENT_
 
 | Component | Network | Address |
 |---|---|---|
-| AgentVault | Stellar Testnet | [`AGENT_VAULT_CONTRACT_ID`](https://stellar.expert/explorer/testnet) |
+| AgentVault | Stellar Testnet | [`CC3A5A...P4WBLCK`](https://stellar.expert/explorer/testnet/contract/CC3A5AK5FW4IA2EUP5WTQPBYYM6JP27Z47PXRVHN3BFUG5DV3P4WBLCK) |
+| PolicyVerifier | Stellar Testnet | [`CDKE3W...HTEDND`](https://stellar.expert/explorer/testnet/contract/CDKE3WYFGQMCK6QUBD5DLCYXCJTXZSQLGB6VE4ZMSTWCDEJMBKHTEDND) |
 | USDC (SAC) | Stellar Testnet | [`CBIELTK6...HMXQDAMA`](https://stellar.expert/explorer/testnet/contract/CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA) |
 
 ## Documentation
